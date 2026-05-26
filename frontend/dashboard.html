@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RateRadar — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0a0a;--card:#141414;--border:#222;--amber:#f59e0b;--amber-dim:#3a2800;--text:#f1f1f1;--muted:#666;--green:#10b981;--red:#ef4444}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* NAV */
+nav{background:var(--card);border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;height:56px;gap:16px;position:sticky;top:0;z-index:100}
+.logo{font-size:18px;font-weight:700;color:#fff;margin-right:auto}
+.logo em{color:var(--amber);font-style:normal}
+#trial-bar{background:var(--amber-dim);border:1px solid #5a4000;border-radius:6px;padding:4px 12px;font-size:12px;color:var(--amber)}
+#sub-btn{background:var(--amber);color:#000;font-weight:600;font-size:13px;border:none;border-radius:6px;padding:6px 14px;cursor:pointer;font-family:'Inter',sans-serif}
+#sub-btn:hover{background:#e58e00}
+.nav-user{font-size:13px;color:var(--muted)}
+.nav-logout{color:var(--muted);font-size:13px;text-decoration:none}
+.nav-logout:hover{color:#fff}
+
+/* LAYOUT */
+.layout{display:flex;height:calc(100vh - 56px);overflow:hidden}
+.sidebar{width:300px;min-width:300px;border-right:1px solid var(--border);overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:16px}
+.main{flex:1;overflow-y:auto;padding:24px}
+
+/* SIDEBAR — ALERTS */
+.sidebar-title{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
+.alert-card{background:#1a1a1a;border:1px solid var(--border);border-radius:10px;padding:14px;cursor:pointer;transition:border-color .2s}
+.alert-card:hover,.alert-card.active{border-color:var(--amber)}
+.alert-card.active{background:#1c1500}
+.alert-name{font-size:14px;font-weight:600;margin-bottom:4px}
+.alert-meta{font-size:12px;color:var(--muted)}
+.alert-actions{display:flex;gap:8px;margin-top:10px}
+.btn-sm{font-size:11px;padding:4px 10px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-family:'Inter',sans-serif;transition:all .15s}
+.btn-sm:hover{border-color:#555;color:#fff}
+.btn-sm.danger:hover{border-color:var(--red);color:var(--red)}
+.toggle-dot{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block;margin-right:6px}
+.toggle-dot.off{background:#444}
+
+#new-alert-btn{width:100%;padding:10px;background:transparent;border:1px dashed #333;border-radius:10px;color:var(--muted);font-size:13px;cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s}
+#new-alert-btn:hover{border-color:var(--amber);color:var(--amber)}
+
+/* STATS ROW */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px}
+.stat-val{font-size:28px;font-weight:800;color:var(--amber)}
+.stat-label{font-size:12px;color:var(--muted);margin-top:2px}
+
+/* SECTION TITLE */
+.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.section-title{font-size:16px;font-weight:600}
+.run-btn{background:var(--amber);color:#000;font-weight:600;font-size:13px;border:none;border-radius:7px;padding:8px 16px;cursor:pointer;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:6px}
+.run-btn:hover{background:#e58e00}
+.run-btn:disabled{background:#3a2800;color:#666;cursor:default}
+
+/* VEHICLE GRID */
+.vehicles-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.vehicle-card{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;transition:border-color .2s}
+.vehicle-card:hover{border-color:#333}
+.v-img{width:100%;height:160px;object-fit:cover;background:#1a1a1a;display:block}
+.v-img-placeholder{width:100%;height:160px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:32px}
+.v-body{padding:14px}
+.v-title{font-size:14px;font-weight:600;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.v-price{font-size:20px;font-weight:800;color:var(--amber);margin-bottom:6px}
+.v-meta{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.v-tag{font-size:11px;background:#1c1c1c;border:1px solid #2a2a2a;border-radius:4px;padding:2px 7px;color:#aaa}
+.v-score{font-size:11px;font-weight:600;padding:3px 8px;border-radius:4px}
+.v-score.high{background:#0a2a1a;color:var(--green)}
+.v-score.mid{background:#1c1500;color:var(--amber)}
+.v-score.low{background:#2a1010;color:var(--red)}
+.v-footer{display:flex;align-items:center;justify-content:space-between}
+.v-source{font-size:11px;color:var(--muted)}
+.v-link{font-size:12px;font-weight:600;color:var(--amber);text-decoration:none}
+.v-link:hover{text-decoration:underline}
+
+/* EMPTY STATE */
+.empty{text-align:center;padding:60px 20px;color:var(--muted)}
+.empty h2{font-size:16px;color:#555;margin-bottom:8px}
+.empty p{font-size:13px}
+
+/* MODAL */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:none;align-items:center;justify-content:center}
+.overlay.open{display:flex}
+.modal{background:#141414;border:1px solid #2a2a2a;border-radius:16px;padding:32px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto}
+.modal h2{font-size:18px;font-weight:700;margin-bottom:20px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.form-row.full{grid-template-columns:1fr}
+.modal label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px}
+.modal input,.modal select{width:100%;padding:9px 12px;background:#1c1c1c;border:1px solid #2a2a2a;border-radius:7px;color:var(--text);font-size:13px;font-family:'Inter',sans-serif}
+.modal input:focus,.modal select:focus{outline:none;border-color:var(--amber)}
+.modal select option{background:#1c1c1c}
+.modal-actions{display:flex;gap:10px;margin-top:20px}
+.btn-primary{flex:1;padding:11px;background:var(--amber);color:#000;font-weight:600;border:none;border-radius:8px;cursor:pointer;font-family:'Inter',sans-serif}
+.btn-primary:hover{background:#e58e00}
+.btn-cancel{padding:11px 20px;background:transparent;color:var(--muted);border:1px solid #2a2a2a;border-radius:8px;cursor:pointer;font-family:'Inter',sans-serif}
+.btn-cancel:hover{color:#fff;border-color:#555}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:#1c1c1c;border:1px solid #2a2a2a;border-radius:8px;padding:12px 18px;font-size:13px;z-index:300;opacity:0;transform:translateY(8px);transition:all .25s}
+.toast.show{opacity:1;transform:translateY(0)}
+
+/* scrollbar */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:#111}
+::-webkit-scrollbar-thumb{background:#2a2a2a;border-radius:3px}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">Rate<em>Radar</em></div>
+  <span id="trial-bar" style="display:none"></span>
+  <button id="sub-btn" style="display:none" onclick="window.location='/subscribe'">Passer Pro</button>
+  <span class="nav-user" id="nav-email"></span>
+  <a href="/logout" class="nav-logout">Déconnexion</a>
+</nav>
+
+<div class="layout">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div>
+      <div class="sidebar-title">Mes alertes</div>
+    </div>
+    <div id="alerts-list"></div>
+    <button id="new-alert-btn">+ Nouvelle alerte</button>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="stats">
+      <div class="stat"><div class="stat-val" id="stat-total">—</div><div class="stat-label">Véhicules trouvés</div></div>
+      <div class="stat"><div class="stat-val" id="stat-alerts">—</div><div class="stat-label">Alertes actives</div></div>
+      <div class="stat"><div class="stat-val" id="stat-new">—</div><div class="stat-label">Nouvelles (24h)</div></div>
+    </div>
+    <div class="section-head">
+      <div class="section-title" id="section-title">Tous les véhicules</div>
+      <button class="run-btn" id="run-btn">⚡ Scanner maintenant</button>
+    </div>
+    <div id="vehicles-grid" class="vehicles-grid"></div>
+  </div>
+</div>
+
+<!-- MODAL NOUVELLE ALERTE -->
+<div class="overlay" id="modal-overlay">
+  <div class="modal">
+    <h2>Nouvelle alerte</h2>
+    <form id="alert-form">
+      <div class="form-row full">
+        <div><label>Nom de l'alerte</label><input type="text" name="name" placeholder="Ex: BMW Série 3 budget 15k"></div>
+      </div>
+      <div class="form-row">
+        <div><label>Marque</label><input type="text" name="brand" placeholder="BMW"></div>
+        <div><label>Modèle</label><input type="text" name="model" placeholder="Série 3"></div>
+      </div>
+      <div class="form-row">
+        <div><label>Prix max (€)</label><input type="number" name="price_max" value="20000" min="1000" step="500"></div>
+        <div><label>Km max</label><input type="number" name="km_max" value="150000" min="10000" step="10000"></div>
+      </div>
+      <div class="form-row">
+        <div><label>Année min</label><input type="number" name="year_min" value="2015" min="2000" max="2024"></div>
+        <div><label>Carburant</label>
+          <select name="fuel">
+            <option value="">Tous</option>
+            <option value="essence">Essence</option>
+            <option value="diesel">Diesel</option>
+            <option value="hybride">Hybride</option>
+            <option value="electrique">Électrique</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" onclick="closeModal()">Annuler</button>
+        <button type="submit" class="btn-primary">Créer l'alerte</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let me = null;
+let allAlerts = [];
+let allVehicles = [];
+let activeAlertId = null;
+
+async function init() {
+  const r = await fetch('/me');
+  if (r.status === 401) { window.location = '/login'; return; }
+  me = await r.json();
+
+  document.getElementById('nav-email').textContent = me.garage_name || me.email;
+
+  if (me.subscription_status !== 'active') {
+    if (me.trial_days_left > 0) {
+      const bar = document.getElementById('trial-bar');
+      bar.textContent = `${me.trial_days_left}j d'essai restants`;
+      bar.style.display = '';
+    }
+    document.getElementById('sub-btn').style.display = '';
+  }
+
+  if (!me.can_use) {
+    document.getElementById('run-btn').disabled = true;
+    document.getElementById('run-btn').textContent = 'Essai expiré';
+  }
+
+  await loadAlerts();
+  await loadVehicles(null);
+}
+
+async function loadAlerts() {
+  const r = await fetch('/alerts');
+  allAlerts = await r.json();
+  renderAlerts();
+  document.getElementById('stat-alerts').textContent = allAlerts.filter(a => a.active).length;
+}
+
+function renderAlerts() {
+  const el = document.getElementById('alerts-list');
+  if (!allAlerts.length) {
+    el.innerHTML = '<div style="font-size:13px;color:var(--muted);text-align:center;padding:20px 0">Aucune alerte.<br>Créez-en une pour commencer.</div>';
+    return;
+  }
+  el.innerHTML = allAlerts.map(a => `
+    <div class="alert-card ${activeAlertId === a.id ? 'active' : ''}" onclick="selectAlert('${a.id}')">
+      <div class="alert-name">
+        <span class="toggle-dot ${a.active ? '' : 'off'}"></span>${a.name || a.brand + ' ' + a.model || 'Alerte'}
+      </div>
+      <div class="alert-meta">${a.brand} ${a.model} · max ${(a.price_max||0).toLocaleString('fr')}€ · ${(a.km_max||0).toLocaleString('fr')}km</div>
+      <div class="alert-actions">
+        <button class="btn-sm" onclick="event.stopPropagation();toggleAlert('${a.id}',${a.active})">${a.active ? 'Pause' : 'Activer'}</button>
+        <button class="btn-sm danger" onclick="event.stopPropagation();deleteAlert('${a.id}')">Supprimer</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function selectAlert(id) {
+  activeAlertId = id;
+  const a = allAlerts.find(x => x.id === id);
+  document.getElementById('section-title').textContent = a ? (a.name || a.brand + ' ' + a.model) : 'Véhicules';
+  renderAlerts();
+  await loadVehicles(id);
+}
+
+async function loadVehicles(alertId) {
+  const url = alertId ? `/vehicles?alert_id=${alertId}` : '/vehicles';
+  const r = await fetch(url);
+  allVehicles = await r.json();
+  renderVehicles();
+  document.getElementById('stat-total').textContent = allVehicles.length;
+  const now = Date.now();
+  const newCount = allVehicles.filter(v => {
+    try { return now - new Date(v.found_at).getTime() < 86400000; } catch { return false; }
+  }).length;
+  document.getElementById('stat-new').textContent = newCount;
+}
+
+function renderVehicles() {
+  const el = document.getElementById('vehicles-grid');
+  if (!allVehicles.length) {
+    el.innerHTML = '<div class="empty"><h2>Aucun véhicule trouvé</h2><p>Lancez un scan ou attendez le rapport quotidien.</p></div>';
+    return;
+  }
+  el.innerHTML = allVehicles.map(v => {
+    const scoreClass = v.score >= 130 ? 'high' : v.score >= 100 ? 'mid' : 'low';
+    const img = v.image_url ? `<img class="v-img" src="${v.image_url}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="v-img-placeholder" style="display:none">🚗</div>` : `<div class="v-img-placeholder">🚗</div>`;
+    return `
+      <div class="vehicle-card">
+        ${img}
+        <div class="v-body">
+          <div class="v-title" title="${v.title}">${v.title || 'Sans titre'}</div>
+          <div class="v-price">${(v.price||0).toLocaleString('fr')} €</div>
+          <div class="v-meta">
+            <span class="v-tag">📍 ${v.location || '—'}</span>
+            <span class="v-tag">🛣 ${(v.km||0).toLocaleString('fr')} km</span>
+            <span class="v-tag">📅 ${v.year || '—'}</span>
+          </div>
+          <div class="v-footer">
+            <span class="v-source">${v.source}</span>
+            <span class="v-score ${scoreClass}">Score ${v.score}</span>
+            <a class="v-link" href="${v.url}" target="_blank">Voir l'annonce →</a>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+document.getElementById('run-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('run-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Scan en cours...';
+  try {
+    const r = await fetch('/scrape/run', {method:'POST'});
+    const d = await r.json();
+    if (r.status === 402) { showToast('Essai expiré — passez Pro'); }
+    else { showToast(`✅ ${d.found} nouveau(x) véhicule(s) trouvé(s)`); await loadVehicles(activeAlertId); }
+  } catch { showToast('Erreur lors du scan'); }
+  btn.disabled = false;
+  btn.textContent = '⚡ Scanner maintenant';
+});
+
+document.getElementById('new-alert-btn').addEventListener('click', () => {
+  document.getElementById('modal-overlay').classList.add('open');
+});
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+document.getElementById('modal-overlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeModal();
+});
+
+document.getElementById('alert-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(e.target));
+  data.price_max = parseInt(data.price_max);
+  data.km_max = parseInt(data.km_max);
+  data.year_min = parseInt(data.year_min);
+  const r = await fetch('/alerts', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data)});
+  if (r.status === 402) { showToast('Essai expiré'); return; }
+  const d = await r.json();
+  if (d.id) {
+    closeModal();
+    showToast('Alerte créée !');
+    await loadAlerts();
+    e.target.reset();
+  }
+});
+
+async function toggleAlert(id, current) {
+  await fetch(`/alerts/${id}/toggle`, {method:'PATCH'});
+  await loadAlerts();
+}
+
+async function deleteAlert(id) {
+  if (!confirm('Supprimer cette alerte ?')) return;
+  await fetch(`/alerts/${id}`, {method:'DELETE'});
+  if (activeAlertId === id) {
+    activeAlertId = null;
+    document.getElementById('section-title').textContent = 'Tous les véhicules';
+  }
+  await loadAlerts();
+  await loadVehicles(null);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+if (new URLSearchParams(location.search).get('subscribed') === '1') {
+  showToast('🎉 Abonnement activé !');
+  history.replaceState(null, '', '/dashboard');
+}
+
+init();
+</script>
+</body>
+</html>

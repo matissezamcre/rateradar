@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RateRadar — Connexion</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:#0a0a0a;color:#f1f1f1;min-height:100vh;display:flex;align-items:center;justify-content:center}
+.card{background:#141414;border:1px solid #222;border-radius:16px;padding:40px;width:100%;max-width:400px}
+.logo{text-align:center;margin-bottom:32px}
+.logo span{font-size:22px;font-weight:700;color:#fff}
+.logo span em{color:#f59e0b;font-style:normal}
+h1{font-size:20px;font-weight:600;text-align:center;margin-bottom:24px;color:#fff}
+label{display:block;font-size:13px;color:#888;margin-bottom:6px}
+input{width:100%;padding:11px 14px;background:#1c1c1c;border:1px solid #2a2a2a;border-radius:8px;color:#f1f1f1;font-size:14px;font-family:'Inter',sans-serif;transition:border-color .2s}
+input:focus{outline:none;border-color:#f59e0b}
+.field{margin-bottom:18px}
+button{width:100%;padding:12px;background:#f59e0b;color:#000;font-weight:600;font-size:15px;border:none;border-radius:8px;cursor:pointer;font-family:'Inter',sans-serif;transition:background .2s}
+button:hover{background:#e58e00}
+.links{text-align:center;margin-top:20px;font-size:13px;color:#666}
+.links a{color:#f59e0b;text-decoration:none}
+.error{background:#2a1010;border:1px solid #5a2020;border-radius:8px;padding:10px 14px;font-size:13px;color:#f87171;margin-bottom:16px;display:none}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo"><span>Rate<em>Radar</em></span></div>
+  <h1>Connexion</h1>
+  <div class="error" id="err"></div>
+  <form id="form">
+    <div class="field">
+      <label>Email</label>
+      <input type="email" name="email" placeholder="garage@exemple.fr" required>
+    </div>
+    <div class="field">
+      <label>Mot de passe</label>
+      <input type="password" name="password" placeholder="••••••••" required>
+    </div>
+    <button type="submit">Se connecter</button>
+  </form>
+  <div class="links">
+    <a href="/forgot-password">Mot de passe oublié ?</a><br><br>
+    Pas encore de compte ? <a href="/register">S'inscrire</a>
+  </div>
+</div>
+<script>
+document.getElementById('form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const r = await fetch('/login', {method:'POST', body: fd});
+  if (r.redirected) { window.location = r.url; return; }
+  const d = await r.json();
+  const err = document.getElementById('err');
+  err.textContent = d.error || 'Erreur';
+  err.style.display = 'block';
+});
+</script>
+</body>
+</html>

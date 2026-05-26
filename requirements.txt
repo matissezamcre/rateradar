@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+pyjwt
+passlib[bcrypt]
+bcrypt==4.0.1
+python-multipart
+psycopg2-binary
+requests
+beautifulsoup4
+httpx
+apscheduler
+stripe
