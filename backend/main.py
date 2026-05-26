@@ -17,14 +17,24 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-from db import (
-    init_db, create_user, get_user_by_email, get_user_by_id,
-    update_subscription, update_subscription_by_customer,
-    set_reset_token, get_user_by_reset_token, update_password,
-    create_alert, get_alerts, delete_alert, toggle_alert,
-    get_all_active_alerts, save_vehicle, get_vehicles,
-    get_unsent_vehicles, mark_vehicles_sent, get_all_users_with_alerts,
-)
+try:
+    from db import (
+        init_db, create_user, get_user_by_email, get_user_by_id,
+        update_subscription, update_subscription_by_customer,
+        set_reset_token, get_user_by_reset_token, update_password,
+        create_alert, get_alerts, delete_alert, toggle_alert,
+        get_all_active_alerts, save_vehicle, get_vehicles,
+        get_unsent_vehicles, mark_vehicles_sent, get_all_users_with_alerts,
+    )
+except ModuleNotFoundError:
+    from backend.db import (
+        init_db, create_user, get_user_by_email, get_user_by_id,
+        update_subscription, update_subscription_by_customer,
+        set_reset_token, get_user_by_reset_token, update_password,
+        create_alert, get_alerts, delete_alert, toggle_alert,
+        get_all_active_alerts, save_vehicle, get_vehicles,
+        get_unsent_vehicles, mark_vehicles_sent, get_all_users_with_alerts,
+    )
 
 load_dotenv()
 
