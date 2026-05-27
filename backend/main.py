@@ -490,13 +490,22 @@ async def stripe_webhook(request: Request):
     except Exception:
         return JSONResponse({"error": "invalid"}, status_code=400)
     if event["type"] == "checkout.session.completed":
-        user_id = event["data"]["object"]["metadata"].get("user_id")
-        customer_id = event["data"]["object"].get("customer")
+        try:
+            obj = event["data"]["object"]
+            metadata = obj.get("metadata") or {}
+            user_id = metadata.get("user_id") if isinstance(metadata, dict) else getattr(metadata, "user_id", None)
+            customer_id = obj.get("customer")
+        except Exception:
+            user_id = None
+            customer_id = None
         if user_id:
             update_subscription(user_id, "active", customer_id)
             create_notification(user_id, "🎉 Abonnement Pro activé ! Bienvenue dans RateRadar Pro.")
     elif event["type"] in ("customer.subscription.deleted", "customer.subscription.paused"):
-        customer_id = event["data"]["object"].get("customer")
+        try:
+            customer_id = event["data"]["object"].get("customer")
+        except Exception:
+            customer_id = None
         if customer_id:
             update_subscription_by_customer(customer_id, "inactive")
     return {"ok": True}

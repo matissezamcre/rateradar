@@ -114,68 +114,38 @@ def score_vehicle(price: int, km: int, year: int, price_max: int, km_max: int, y
     return max(0, min(200, score))
 
 
-# ── LeBonCoin (API interne JSON) ───────────────────────────────────────────────
+# ── LeBonCoin ─────────────────────────────────────────────────────────────────
 
-def scrape_leboncoin(alert: dict) -> list:
+def _parse_lbc_ads(ads: list, alert: dict, brand: str, model: str) -> list:
     results = []
-    brand   = alert.get("brand", "")
-    model   = alert.get("model", "")
     price_max = alert.get("price_max", 50000)
     km_max    = alert.get("km_max", 200000)
     year_min  = alert.get("year_min", 2010)
-
-    keyword = " ".join(filter(None, [brand, model])).strip()
-
-    payload = {
-        "limit": 35,
-        "limit_alu": 3,
-        "offset": 0,
-        "filters": {
-            "category": {"id": "2"},
-            "enums": {"ad_type": ["offer"]},
-            "ranges": {
-                "price": {"max": str(price_max)},
-                "mileage": {"max": str(km_max)},
-                "regdate": {"min": str(year_min)},
-            },
-            "keywords": {"text": keyword} if keyword else {},
-        },
-        "sort_by": "price",
-        "sort_order": "asc",
-    }
-
-    data = _get_json(
-        "https://api.leboncoin.fr/api/frontend/v4/search",
-        LBC_HEADERS,
-        payload,
-    )
-    if not data:
-        return results
-
-    ads = data.get("ads") or []
     for ad in ads[:20]:
         try:
-            url   = ad.get("url", "")
-            title = ad.get("subject", "")
+            url   = ad.get("url") or ad.get("link") or ""
+            title = ad.get("subject") or ad.get("title") or ""
             price_list = ad.get("price") or [0]
-            price = int(price_list[0]) if price_list else 0
+            price = int(price_list[0]) if isinstance(price_list, list) else int(price_list or 0)
 
             attrs = {a["key"]: a.get("value_label") or a.get("value", "") for a in (ad.get("attributes") or [])}
-            km_raw   = attrs.get("mileage", "0")
-            km       = int(re.sub(r"[^\d]", "", str(km_raw)) or 0)
+            km_raw = attrs.get("mileage", "0")
+            km = int(re.sub(r"[^\d]", "", str(km_raw)) or 0)
+            if km > 999999:
+                km = 0
             year_raw = attrs.get("regdate", "")
-            year_match = re.search(r"(\d{4})", str(year_raw))
-            year = int(year_match.group(1)) if year_match else 0
+            year_m = re.search(r"(\d{4})", str(year_raw))
+            year = int(year_m.group(1)) if year_m else 0
 
             location_obj = ad.get("location") or {}
             location = location_obj.get("city", "") or location_obj.get("department_id", "")
 
             images = ad.get("images") or {}
             image_url = ""
-            if images.get("small_url"):
-                image_url = images["small_url"]
-            elif images.get("urls"):
-                image_url = images["urls"][0]
+            if isinstance(images, dict):
+                image_url = images.get("small_url") or (images.get("urls") or [""])[0]
+            elif isinstance(images, list):
+                image_url = images[0] if images else ""
 
             if not url.startswith("http"):
                 url = "https://www.leboncoin.fr" + url
@@ -195,6 +165,136 @@ def scrape_leboncoin(alert: dict) -> list:
                 "brand":     brand,
                 "model":     model,
                 "location":  str(location),
+                "image_url": image_url,
+                "score":     score_vehicle(price, km, year, price_max, km_max, year_min),
+            })
+        except Exception:
+            continue
+    return results
+
+
+def scrape_leboncoin(alert: dict) -> list:
+    brand     = alert.get("brand", "")
+    model     = alert.get("model", "")
+    price_max = alert.get("price_max", 50000)
+    km_max    = alert.get("km_max", 200000)
+    year_min  = alert.get("year_min", 2010)
+    keyword   = " ".join(filter(None, [brand, model])).strip()
+
+    # ── Tentative 1 : API interne JSON ──────────────────────────────────────────
+    payload = {
+        "limit": 35,
+        "limit_alu": 3,
+        "offset": 0,
+        "filters": {
+            "category": {"id": "2"},
+            "enums": {"ad_type": ["offer"]},
+            "ranges": {
+                "price": {"max": str(price_max)},
+                "mileage": {"max": str(km_max)},
+                "regdate": {"min": str(year_min)},
+            },
+            "keywords": {"text": keyword} if keyword else {},
+        },
+        "sort_by": "price",
+        "sort_order": "asc",
+    }
+    data = _get_json("https://api.leboncoin.fr/api/frontend/v4/search", LBC_HEADERS, payload)
+    if data:
+        ads = data.get("ads") or []
+        if ads:
+            return _parse_lbc_ads(ads, alert, brand, model)
+
+    # ── Tentative 2 : page HTML publique + __NEXT_DATA__ ────────────────────────
+    search_url = (
+        f"https://www.leboncoin.fr/recherche?category=2"
+        f"&text={quote_plus(keyword)}"
+        f"&price=0-{price_max}"
+        f"&mileage=0-{km_max}"
+        f"&regdate={year_min}-max"
+        f"&sort=time&order=desc"
+    )
+    html_headers = {
+        **LBC_HEADERS,
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    }
+    soup = _get_html(search_url, html_headers)
+    if not soup:
+        return []
+
+    # Essai __NEXT_DATA__
+    nd = _extract_next_data(soup)
+    if nd:
+        ads = (
+            nd.get("props", {}).get("pageProps", {}).get("searchData", {}).get("ads") or
+            nd.get("props", {}).get("pageProps", {}).get("ads") or
+            []
+        )
+        if ads:
+            return _parse_lbc_ads(ads, alert, brand, model)
+
+    # Essai window.__STORE__ ou FLUX_STATE
+    for script in soup.find_all("script"):
+        txt = script.string or ""
+        for marker in ["window.__STORE__=", "window.FLUX_STATE=", "__DATA__="]:
+            if marker in txt:
+                try:
+                    raw = txt[txt.index(marker) + len(marker):]
+                    raw = raw.split(";\n")[0].split("</script>")[0]
+                    store = json.loads(raw)
+                    ads = (
+                        store.get("searchResults", {}).get("ads") or
+                        store.get("ads") or []
+                    )
+                    if ads:
+                        return _parse_lbc_ads(ads, alert, brand, model)
+                except Exception:
+                    continue
+
+    # Fallback CSS : lire les annonces depuis la page HTML
+    results = []
+    km_re = re.compile(r'\b(\d{1,3}(?:[\s.]\d{3})+|\d{3,6})\s*km\b', re.I)
+    year_re = re.compile(r'\b(20[01]\d|19[89]\d)\b')
+    price_re = re.compile(r'(\d[\d\s]*)\s*€')
+
+    for card in soup.select('a[href*="/voitures/"]')[:25]:
+        try:
+            href = card.get("href", "")
+            if not href:
+                continue
+            ad_url = href if href.startswith("http") else "https://www.leboncoin.fr" + href
+            text = card.get_text(" ", strip=True)
+
+            p_m = price_re.search(text)
+            price = int(re.sub(r"\s", "", p_m.group(1))) if p_m else 0
+            if price == 0 or price > price_max * 1.1:
+                continue
+
+            km_m = km_re.search(text)
+            km = int(re.sub(r"[\s.]", "", km_m.group(1))) if km_m else 0
+            if km > 999999:
+                km = 0
+
+            yr_m = year_re.search(text)
+            year = int(yr_m.group(1)) if yr_m else 0
+
+            img = card.find("img")
+            image_url = img.get("src", "") if img else ""
+            title_el = card.find(attrs={"data-qa-id": "aditem_title"}) or card.find("h2") or card.find("p")
+            title = title_el.get_text(strip=True) if title_el else keyword
+
+            results.append({
+                "alert_id":  alert["id"],
+                "user_id":   alert["user_id"],
+                "source":    "leboncoin",
+                "url":       ad_url,
+                "title":     title,
+                "price":     price,
+                "km":        km,
+                "year":      year,
+                "brand":     brand,
+                "model":     model,
+                "location":  "",
                 "image_url": image_url,
                 "score":     score_vehicle(price, km, year, price_max, km_max, year_min),
             })
