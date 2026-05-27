@@ -53,30 +53,33 @@ def _sleep():
     time.sleep(random.uniform(1.2, 2.8))
 
 
-def _proxied_get(url: str, headers: dict, timeout: int = 20) -> requests.Response | None:
-    """GET via ScraperAPI si clé disponible, sinon direct."""
+def _get_html(url: str, headers: dict, timeout: int = 12, proxy: bool = False) -> BeautifulSoup | None:
+    """GET direct ou via ScraperAPI si proxy=True et clé disponible."""
     try:
         _sleep()
-        if SCRAPER_API_KEY:
-            proxy_url = f"http://api.scraperapi.com?api_key={SCRAPER_API_KEY}&url={quote_plus(url)}&render=false"
-            r = requests.get(proxy_url, timeout=timeout)
+        if proxy and SCRAPER_API_KEY:
+            r = requests.get(
+                f"http://api.scraperapi.com?api_key={SCRAPER_API_KEY}&url={quote_plus(url)}&render=false",
+                timeout=timeout + 10,
+            )
         else:
             r = requests.get(url, headers=headers, timeout=timeout)
         if r.status_code == 200:
             r.encoding = "utf-8"
-            return r
+            return BeautifulSoup(r.text, "html.parser")
     except Exception:
         pass
     return None
 
 
 def _proxied_post(url: str, headers: dict, payload: dict, timeout: int = 20) -> requests.Response | None:
-    """POST via ScraperAPI si clé disponible, sinon direct."""
     try:
         _sleep()
         if SCRAPER_API_KEY:
-            proxy_url = f"http://api.scraperapi.com?api_key={SCRAPER_API_KEY}&url={quote_plus(url)}&render=false"
-            r = requests.post(proxy_url, headers=headers, json=payload, timeout=timeout)
+            r = requests.post(
+                f"http://api.scraperapi.com?api_key={SCRAPER_API_KEY}&url={quote_plus(url)}&render=false",
+                headers=headers, json=payload, timeout=timeout,
+            )
         else:
             r = requests.post(url, headers=headers, json=payload, timeout=timeout)
         if r.status_code == 200:
@@ -84,13 +87,6 @@ def _proxied_post(url: str, headers: dict, payload: dict, timeout: int = 20) -> 
             return r
     except Exception:
         pass
-    return None
-
-
-def _get_html(url: str, headers: dict, timeout: int = 12) -> BeautifulSoup | None:
-    r = _proxied_get(url, headers, timeout)
-    if r:
-        return BeautifulSoup(r.text, "html.parser")
     return None
 
 
@@ -253,7 +249,7 @@ def scrape_leboncoin(alert: dict) -> list:
         **LBC_HEADERS,
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     }
-    soup = _get_html(search_url, html_headers)
+    soup = _get_html(search_url, html_headers, proxy=True)
     if not soup:
         return []
 
@@ -516,7 +512,7 @@ def scrape_lacentrale(alert: dict) -> list:
         f"&priceMax={price_max}&mileageMax={km_max}&yearMin={year_min}&sortBy=priceAsc"
     )
 
-    soup = _get_html(url, LC_HEADERS)
+    soup = _get_html(url, LC_HEADERS, proxy=True)
     if not soup:
         return results
 
