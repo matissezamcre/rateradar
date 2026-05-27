@@ -341,36 +341,40 @@ def scrape_autoscout24(alert: dict) -> list:
                     ad_url = ad.get("url") or ad.get("listingUrl") or ad.get("link") or ""
 
                     vehicle = ad.get("vehicle") or {}
-                    title = (
-                        ad.get("title") or
-                        f"{vehicle.get('make','')} {vehicle.get('model','')} {vehicle.get('modelVersionInput','')}".strip()
-                    )
+                    make  = vehicle.get("make") or ""
+                    model_v = vehicle.get("modelVersionInput") or vehicle.get("model") or vehicle.get("modelGroup") or ""
+                    title = f"{make} {model_v}".strip() or "BMW"
 
+                    # price.priceFormatted = "€ 7 990" — pas de champ numérique
                     price_raw = ad.get("price") or {}
                     if isinstance(price_raw, dict):
-                        price = int(price_raw.get("value") or price_raw.get("amount") or price_raw.get("publicPrice") or 0)
+                        fmt = price_raw.get("priceFormatted") or price_raw.get("value") or price_raw.get("amount") or "0"
+                        price = int(re.sub(r"[^\d]", "", str(fmt)) or 0)
                     else:
                         price = int(re.sub(r"[^\d]", "", str(price_raw)) or 0)
 
-                    km_raw = vehicle.get("mileage") or vehicle.get("mileageInKm") or ad.get("mileage") or 0
+                    # vehicle.mileageInKm = "172 000 km"
+                    km_raw = vehicle.get("mileageInKm") or vehicle.get("mileage") or ad.get("mileage") or "0"
                     km = int(re.sub(r"[^\d]", "", str(km_raw)) or 0)
                     if km > 999999:
                         km = 0
 
-                    year_raw = vehicle.get("firstRegistrationYear") or vehicle.get("year") or ad.get("firstRegistrationYear") or 0
-                    year = int(str(year_raw)[:4]) if year_raw else 0
+                    # year: tracking.firstRegistration = "09-2016"
+                    tracking = ad.get("tracking") or {}
+                    first_reg = tracking.get("firstRegistration") or vehicle.get("firstRegistration") or ""
+                    yr_m = re.search(r"(20\d{2}|19\d{2})", str(first_reg))
+                    year = int(yr_m.group(1)) if yr_m else 0
 
                     loc = ad.get("location") or {}
-                    location = loc.get("city") or loc.get("countryCode") or str(loc) if isinstance(loc, dict) else str(loc)
+                    location = loc.get("city") or loc.get("zip") or "" if isinstance(loc, dict) else str(loc)
 
+                    # images = liste de strings directement
                     imgs = ad.get("images") or []
-                    image_url = ""
                     if imgs:
-                        first = imgs[0]
-                        if isinstance(first, dict):
-                            image_url = first.get("url") or first.get("src") or first.get("thumbUrl") or ""
-                        else:
-                            image_url = str(first)
+                        first_img = imgs[0]
+                        image_url = first_img if isinstance(first_img, str) else (first_img.get("url") or "")
+                    else:
+                        image_url = ""
 
                     if not ad_url.startswith("http"):
                         ad_url = "https://www.autoscout24.fr" + ad_url
