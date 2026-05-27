@@ -242,19 +242,30 @@ def scrape_autoscout24(alert: dict) -> list:
             )
             for ad in listings[:20]:
                 try:
-                    ad_url   = ad.get("url") or ""
+                    ad_url   = ad.get("url") or ad.get("listingUrl") or ad.get("link") or ""
+                    # Reject dealer/seller page URLs — must be a specific listing
+                    if ad_url and "/offres/" not in ad_url and "/annonces/" not in ad_url:
+                        ad_url = ""
+                    if not ad_url:
+                        # Build URL from guid/id if available
+                        guid = ad.get("guid") or ad.get("id") or ""
+                        if guid:
+                            slug = (ad.get("make","") + "-" + ad.get("model","")).lower().replace(" ","-")
+                            ad_url = f"https://www.autoscout24.fr/offres/{slug}-{guid}"
                     title    = ad.get("title") or f"{ad.get('make','')} {ad.get('model','')}".strip()
                     price    = int(ad.get("price") or ad.get("pricing", {}).get("amount") or 0)
-                    km       = int(ad.get("mileage") or ad.get("mileageInKm") or 0)
-                    year_raw = ad.get("firstRegistrationYear") or ad.get("firstRegYear") or 0
-                    year     = int(year_raw) if year_raw else 0
+                    km_raw   = ad.get("mileage") or ad.get("mileageInKm") or ad.get("km") or 0
+                    km       = int(re.sub(r"[^\d]", "", str(km_raw)) or 0)
+                    if km > 999999: km = 0  # valeur aberrante
+                    year_raw = ad.get("firstRegistrationYear") or ad.get("firstRegYear") or ad.get("year") or 0
+                    year     = int(str(year_raw)[:4]) if year_raw else 0
                     location = ad.get("location") or ad.get("seller", {}).get("city") or ""
                     imgs     = ad.get("images") or ad.get("media", {}).get("photos") or []
                     image_url = imgs[0].get("url") or imgs[0].get("src") or "" if imgs else ""
 
                     if not ad_url.startswith("http"):
                         ad_url = "https://www.autoscout24.fr" + ad_url
-                    if price == 0 or price > price_max * 1.1:
+                    if price == 0 or price > price_max * 1.1 or not ad_url:
                         continue
 
                     results.append({
@@ -283,12 +294,18 @@ def scrape_autoscout24(alert: dict) -> list:
     articles = soup.select("article[class*='ListItem']") or soup.select("article")
     for card in articles[:20]:
         try:
-            link = card.select_one("a[href*='/annonces/']") or card.select_one("a[href]")
+            # AutoScout24 uses /offres/ for listings, NOT /annonces/
+            link = (card.select_one("a[href*='/offres/']") or
+                    card.select_one("a[href*='/annonces/']") or
+                    card.select_one("a[href*='autoscout24']"))
             if not link:
                 continue
             href = link["href"]
             if not href.startswith("http"):
                 href = "https://www.autoscout24.fr" + href
+            # Skip dealer/seller pages
+            if "/offres/" not in href and "/annonces/" not in href:
+                continue
 
             title_el = card.select_one("h2") or card.select_one("[class*='title']")
             title    = title_el.get_text(strip=True) if title_el else ""
@@ -298,8 +315,10 @@ def scrape_autoscout24(alert: dict) -> list:
             price    = int(re.sub(r"[^\d]", "", price_t) or 0)
 
             text   = card.get_text(" ", strip=True)
-            km_m   = re.search(r"(\d[\d\s]*)\s*km", text, re.I)
-            km     = int(re.sub(r"\s", "", km_m.group(1))) if km_m else 0
+            # Regex précis : "126 895 km" ou "126895 km" — jamais l'année
+            km_m   = re.search(r'\b(\d{1,3}(?:[\s.]\d{3})+|\d{3,6})\s*km\b', text, re.I)
+            km     = int(re.sub(r'[\s.]', '', km_m.group(1))) if km_m else 0
+            if km > 999999: km = 0
             yr_m   = re.search(r"(20\d{2}|19\d{2})", text)
             year   = int(yr_m.group()) if yr_m else 0
 
