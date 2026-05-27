@@ -402,13 +402,34 @@ async def scrape_run(user: dict = Depends(require_user)):
 
 @app.get("/scrape/debug")
 async def scrape_debug(brand: str = "BMW", model: str = "Serie 3", user: dict = Depends(require_user)):
-    import sys
+    import sys, requests as req, importlib
     sys.path.insert(0, str(BASE_DIR.parent))
-    from scripts.scraper import scrape_leboncoin, scrape_autoscout24, scrape_lacentrale
+    import scripts.scraper as sc
+    importlib.reload(sc)
+
     fake_alert = {"id": "debug", "user_id": user["id"], "brand": brand, "model": model,
                   "price_max": 25000, "km_max": 200000, "year_min": 2015}
-    out = {}
-    for fn, name in [(scrape_leboncoin, "leboncoin"), (scrape_autoscout24, "autoscout24"), (scrape_lacentrale, "lacentrale")]:
+
+    # Test HTTP brut pour chaque site
+    probes = {
+        "leboncoin_api": ("POST", "https://api.leboncoin.fr/api/frontend/v4/search", sc.LBC_HEADERS),
+        "autoscout24": ("GET", f"https://www.autoscout24.fr/lst/{brand.lower()}/{model.lower().replace(' ','-')}?sort=price&desc=0&cy=F&atype=C", sc.AS24_HEADERS),
+        "lacentrale": ("GET", f"https://www.lacentrale.fr/listing?makesModelsCommercialNames={brand}%3A{model}&priceMax=25000", sc.LC_HEADERS),
+    }
+    http_status = {}
+    for name, (method, url, hdrs) in probes.items():
+        try:
+            if method == "POST":
+                r = req.post(url, headers=hdrs, json={"limit":1,"filters":{"category":{"id":"2"},"enums":{"ad_type":["offer"]},"keywords":{"text":brand}}}, timeout=10)
+            else:
+                r = req.get(url, headers=hdrs, timeout=10)
+            snippet = r.text[:300].replace("\n", " ")
+            http_status[name] = {"status": r.status_code, "snippet": snippet}
+        except Exception as e:
+            http_status[name] = {"status": "error", "snippet": str(e)}
+
+    out = {"http_probes": http_status}
+    for fn, name in [(sc.scrape_leboncoin, "leboncoin"), (sc.scrape_autoscout24, "autoscout24"), (sc.scrape_lacentrale, "lacentrale")]:
         try:
             r = fn(fake_alert)
             out[name] = {"count": len(r), "sample": r[0] if r else None}
