@@ -53,6 +53,7 @@ def _get_html(url: str, headers: dict, timeout: int = 12) -> BeautifulSoup | Non
         _sleep()
         r = requests.get(url, headers=headers, timeout=timeout)
         if r.status_code == 200:
+            r.encoding = "utf-8"
             return BeautifulSoup(r.text, "html.parser")
     except Exception:
         pass
