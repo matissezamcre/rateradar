@@ -428,7 +428,35 @@ async def scrape_debug(brand: str = "BMW", model: str = "Serie 3", user: dict = 
         except Exception as e:
             http_status[name] = {"status": "error", "snippet": str(e)}
 
-    out = {"http_probes": http_status}
+    # Dump __NEXT_DATA__ d'AutoScout24 pour voir la structure réelle
+    import json as _json
+    from bs4 import BeautifulSoup as _BS
+    as24_url = f"https://www.autoscout24.fr/lst/{brand.lower()}/{model.lower().replace(' ','-')}?sort=price&desc=0&cy=F&atype=C&fregfrom=2015&kmto=200000&priceto=25000"
+    try:
+        as24_r = req.get(as24_url, headers=sc.AS24_HEADERS, timeout=12)
+        soup = _BS(as24_r.text, "html.parser")
+        nd_tag = soup.find("script", {"id": "__NEXT_DATA__"})
+        if nd_tag and nd_tag.string:
+            nd = _json.loads(nd_tag.string)
+            pp = nd.get("props", {}).get("pageProps", {})
+            nd_keys = list(pp.keys())
+            # Cherche où sont les annonces
+            listings_sample = None
+            for k in ["listings", "ads", "searchResults", "initialState", "initialData"]:
+                if k in pp:
+                    val = pp[k]
+                    if isinstance(val, dict):
+                        listings_sample = {"key": k, "sub_keys": list(val.keys())[:10]}
+                    elif isinstance(val, list):
+                        listings_sample = {"key": k, "count": len(val), "first_keys": list(val[0].keys())[:10] if val else []}
+                    break
+            as24_nd_info = {"pageProps_keys": nd_keys, "listings_found": listings_sample}
+        else:
+            as24_nd_info = {"error": "pas de __NEXT_DATA__", "html_snippet": as24_r.text[:200]}
+    except Exception as e:
+        as24_nd_info = {"error": str(e)}
+
+    out = {"http_probes": http_status, "as24_next_data": as24_nd_info}
     for fn, name in [(sc.scrape_leboncoin, "leboncoin"), (sc.scrape_autoscout24, "autoscout24"), (sc.scrape_lacentrale, "lacentrale")]:
         try:
             r = fn(fake_alert)
