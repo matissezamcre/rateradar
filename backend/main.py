@@ -400,6 +400,22 @@ async def scrape_run(user: dict = Depends(require_user)):
         create_notification(user["id"], f"⚡ Scan manuel : {total} nouveau(x) véhicule(s) trouvé(s)")
     return {"found": total}
 
+@app.get("/scrape/debug")
+async def scrape_debug(brand: str = "BMW", model: str = "Serie 3", user: dict = Depends(require_user)):
+    import sys
+    sys.path.insert(0, str(BASE_DIR.parent))
+    from scripts.scraper import scrape_leboncoin, scrape_autoscout24, scrape_lacentrale
+    fake_alert = {"id": "debug", "user_id": user["id"], "brand": brand, "model": model,
+                  "price_max": 25000, "km_max": 200000, "year_min": 2015}
+    out = {}
+    for fn, name in [(scrape_leboncoin, "leboncoin"), (scrape_autoscout24, "autoscout24"), (scrape_lacentrale, "lacentrale")]:
+        try:
+            r = fn(fake_alert)
+            out[name] = {"count": len(r), "sample": r[0] if r else None}
+        except Exception as e:
+            out[name] = {"error": str(e)}
+    return out
+
 @app.post("/digest/now")
 async def digest_now(user: dict = Depends(require_user)):
     unsent = get_unsent_vehicles(user["id"])
