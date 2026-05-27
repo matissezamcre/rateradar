@@ -349,6 +349,26 @@ def vehicles_list(
 ):
     vehicles = get_vehicles(user["id"], alert_id, source=source, min_score=min_score,
                             sort=sort, favorites_only=favorites)
+    # Filtre pertinence post-DB : élimine les anciens résultats hors-sujet
+    if alert_id:
+        alerts = get_alerts(user["id"])
+        alert = next((a for a in alerts if a["id"] == alert_id), None)
+        if alert:
+            import re as _re
+            brand = (alert.get("brand") or "").lower().strip()
+            model = (alert.get("model") or "").lower().strip()
+            model_num = _re.search(r'\b(\d+)\b', model)
+            filtered = []
+            for v in vehicles:
+                title = (v.get("title") or "").lower()
+                if brand and brand.split()[0] not in title:
+                    continue
+                if model_num:
+                    n = model_num.group(1)
+                    if not _re.search(rf'\b{n}\d*\b|\b\d*{_re.escape(n)}\b', title):
+                        continue
+                filtered.append(v)
+            vehicles = filtered
     for v in vehicles:
         if v.get("found_at"):
             v["found_at"] = str(v["found_at"])
