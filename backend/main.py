@@ -23,12 +23,12 @@ try:
         update_subscription, update_subscription_by_customer,
         set_reset_token, get_user_by_reset_token, update_password,
         create_alert, get_alerts, delete_alert, toggle_alert, update_alert, update_alert_last_scan,
-        get_all_active_alerts, save_vehicle, get_vehicles,
+        get_all_active_alerts, get_all_active_alerts_with_plan, save_vehicle, get_vehicles,
         get_unsent_vehicles, mark_vehicles_sent, get_all_users_with_alerts,
         toggle_vehicle_favorite, hide_vehicle,
         get_vehicle_stats_daily, get_best_vehicle_today,
         create_notification, get_notifications, mark_notifications_read, get_unread_count,
-        update_profile,
+        update_profile, update_plan, count_user_alerts,
     )
 except ModuleNotFoundError:
     from backend.db import (
@@ -36,12 +36,12 @@ except ModuleNotFoundError:
         update_subscription, update_subscription_by_customer,
         set_reset_token, get_user_by_reset_token, update_password,
         create_alert, get_alerts, delete_alert, toggle_alert, update_alert, update_alert_last_scan,
-        get_all_active_alerts, save_vehicle, get_vehicles,
+        get_all_active_alerts, get_all_active_alerts_with_plan, save_vehicle, get_vehicles,
         get_unsent_vehicles, mark_vehicles_sent, get_all_users_with_alerts,
         toggle_vehicle_favorite, hide_vehicle,
         get_vehicle_stats_daily, get_best_vehicle_today,
         create_notification, get_notifications, mark_notifications_read, get_unread_count,
-        update_profile,
+        update_profile, update_plan, count_user_alerts,
     )
 
 load_dotenv()
@@ -55,14 +55,51 @@ stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
 pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 scheduler = AsyncIOScheduler()
 
+PLAN_LIMITS = {
+    "trial":   {"max_alerts": 15,   "scans_per_day": 2, "manual_scan": True,  "csv_export": True},
+    "starter": {"max_alerts": 5,    "scans_per_day": 1, "manual_scan": False, "csv_export": False},
+    "pro":     {"max_alerts": 15,   "scans_per_day": 2, "manual_scan": True,  "csv_export": True},
+    "agence":  {"max_alerts": None, "scans_per_day": 4, "manual_scan": True,  "csv_export": True},
+}
 
-async def run_daily_scrape():
+
+def _alert_plan(alert: dict) -> str:
+    if alert.get("subscription_status") == "active":
+        return alert.get("plan") or "starter"
+    try:
+        created = datetime.fromisoformat(str(alert.get("user_created_at", "")).replace("Z", "+00:00"))
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
+        if (datetime.now(timezone.utc) - created).days < 14:
+            return "trial"
+    except Exception:
+        pass
+    return "expired"
+
+
+def get_user_plan(user: dict) -> str:
+    if user.get("subscription_status") == "active":
+        return user.get("plan") or "starter"
+    try:
+        created = datetime.fromisoformat(str(user["created_at"]).replace("Z", "+00:00"))
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
+        if (datetime.now(timezone.utc) - created).days < 14:
+            return "trial"
+    except Exception:
+        pass
+    return "expired"
+
+
+async def run_daily_scrape(plans=None):
     from scripts.scraper import run_alert
     import sys
     sys.path.insert(0, str(BASE_DIR.parent))
 
-    alerts = get_all_active_alerts()
-    print(f"[Scraper] Running {len(alerts)} alerts...")
+    alerts = get_all_active_alerts_with_plan()
+    if plans is not None:
+        alerts = [a for a in alerts if _alert_plan(a) in plans]
+    print(f"[Scraper] Running {len(alerts)} alerts (slot={plans or 'all'})...")
     new_by_user = {}
     for alert in alerts:
         try:
@@ -124,7 +161,10 @@ def send_digest_email(to_email: str, garage_name: str, vehicles: list):
 @asynccontextmanager
 async def lifespan(app):
     init_db()
-    scheduler.add_job(run_daily_scrape, 'cron', hour=8, minute=0, id='daily_scrape')
+    scheduler.add_job(run_daily_scrape, 'cron', hour=8,  minute=0, id='scan_8h',  args=[None])
+    scheduler.add_job(run_daily_scrape, 'cron', hour=14, minute=0, id='scan_14h', args=[["trial", "pro", "agence"]])
+    scheduler.add_job(run_daily_scrape, 'cron', hour=18, minute=0, id='scan_18h', args=[["trial", "agence"]])
+    scheduler.add_job(run_daily_scrape, 'cron', hour=22, minute=0, id='scan_22h', args=[["agence"]])
     scheduler.start()
     yield
     scheduler.shutdown()
@@ -255,6 +295,7 @@ def me(request: Request):
     except Exception:
         days_left = 14
     unread = get_unread_count(user["id"])
+    plan = get_user_plan(user)
     return {
         "id": user["id"],
         "email": user["email"],
@@ -264,6 +305,8 @@ def me(request: Request):
         "can_use": user_can_use(user),
         "unread_notifications": unread,
         "created_at": str(user.get("created_at", "")),
+        "plan": plan,
+        "plan_limits": PLAN_LIMITS.get(plan, PLAN_LIMITS["starter"]),
     }
 
 @app.post("/profile/update")
@@ -312,6 +355,11 @@ def alerts_list(user: dict = Depends(require_user)):
 def alert_create(req: AlertCreate, user: dict = Depends(require_user)):
     if not user_can_use(user):
         raise HTTPException(status_code=402, detail="trial_expired")
+    plan = get_user_plan(user)
+    limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["starter"])
+    max_alerts = limits.get("max_alerts")
+    if max_alerts is not None and count_user_alerts(user["id"]) >= max_alerts:
+        raise HTTPException(status_code=402, detail=f"alert_limit:{max_alerts}")
     aid = create_alert(user["id"], req.dict())
     return {"id": aid}
 
@@ -389,6 +437,25 @@ def stats_daily(user: dict = Depends(require_user)):
     rows = get_vehicle_stats_daily(user["id"])
     return [{"date": str(r["date"]), "count": r["count"]} for r in rows]
 
+@app.get("/export/csv")
+def export_csv(alert_id: Optional[str] = None, user: dict = Depends(require_user)):
+    from fastapi.responses import StreamingResponse
+    import csv, io
+    plan = get_user_plan(user)
+    if not PLAN_LIMITS.get(plan, {}).get("csv_export"):
+        raise HTTPException(status_code=402, detail="csv_export_unavailable")
+    rows = get_vehicles(user["id"], alert_id, limit=2000)
+    fields = ["title", "price", "km", "year", "brand", "model", "location", "source", "url", "score", "found_at"]
+    buf = io.StringIO()
+    w = csv.DictWriter(buf, fieldnames=fields, extrasaction="ignore")
+    w.writeheader()
+    for v in rows:
+        if v.get("found_at"):
+            v["found_at"] = str(v["found_at"])
+        w.writerow(v)
+    return StreamingResponse(iter([buf.getvalue()]), media_type="text/csv",
+                             headers={"Content-Disposition": "attachment; filename=rateradar_export.csv"})
+
 @app.get("/stats/best-today")
 def best_today(user: dict = Depends(require_user)):
     v = get_best_vehicle_today(user["id"])
@@ -400,6 +467,9 @@ def best_today(user: dict = Depends(require_user)):
 async def scrape_run(user: dict = Depends(require_user)):
     if not user_can_use(user):
         raise HTTPException(status_code=402, detail="trial_expired")
+    plan = get_user_plan(user)
+    if not PLAN_LIMITS.get(plan, {}).get("manual_scan"):
+        raise HTTPException(status_code=402, detail="manual_scan_unavailable")
     import sys
     sys.path.insert(0, str(BASE_DIR.parent))
     from scripts.scraper import run_alert
@@ -518,22 +588,29 @@ def notifications_read(user: dict = Depends(require_user)):
 # ── Stripe ─────────────────────────────────────────────────────────────────────
 
 @app.get("/subscribe")
-async def subscribe(request: Request):
+async def subscribe(request: Request, plan: str = ""):
     user = get_current_user(request)
     if not user:
         return RedirectResponse("/login")
-    price_id = os.getenv("STRIPE_PRICE_ID", "")
+    if not plan:
+        return html("subscribe.html")
+    price_map = {
+        "starter": os.getenv("STRIPE_PRICE_STARTER", ""),
+        "pro":     os.getenv("STRIPE_PRICE_PRO", os.getenv("STRIPE_PRICE_ID", "")),
+        "agence":  os.getenv("STRIPE_PRICE_AGENCE", ""),
+    }
+    price_id = price_map.get(plan, "")
     if not price_id:
-        return JSONResponse({"error": "Stripe non configuré"}, status_code=503)
+        return JSONResponse({"error": "Plan ou Stripe non configuré"}, status_code=503)
     try:
         session = stripe.checkout.Session.create(
             payment_method_types=["card"],
             mode="subscription",
             line_items=[{"price": price_id, "quantity": 1}],
             customer_email=user["email"],
-            metadata={"user_id": user["id"]},
+            metadata={"user_id": user["id"], "plan": plan},
             success_url=APP_URL + "/dashboard?subscribed=1",
-            cancel_url=APP_URL + "/dashboard",
+            cancel_url=APP_URL + "/subscribe",
         )
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
@@ -569,13 +646,17 @@ async def stripe_webhook(request: Request):
             obj = event["data"]["object"]
             metadata = obj.get("metadata") or {}
             user_id = metadata.get("user_id") if isinstance(metadata, dict) else getattr(metadata, "user_id", None)
+            plan = (metadata.get("plan") if isinstance(metadata, dict) else None) or "pro"
             customer_id = obj.get("customer")
         except Exception:
             user_id = None
+            plan = "pro"
             customer_id = None
         if user_id:
             update_subscription(user_id, "active", customer_id)
-            create_notification(user_id, "🎉 Abonnement Pro activé ! Bienvenue dans RateRadar Pro.")
+            update_plan(user_id, plan)
+            plan_label = {"starter": "Starter", "pro": "Pro", "agence": "Agence"}.get(plan, plan.capitalize())
+            create_notification(user_id, f"🎉 Abonnement {plan_label} activé ! Bienvenue dans RateRadar.")
     elif event["type"] in ("customer.subscription.deleted", "customer.subscription.paused"):
         try:
             customer_id = event["data"]["object"].get("customer")

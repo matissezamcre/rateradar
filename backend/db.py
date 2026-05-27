@@ -103,6 +103,10 @@ def init_db():
                         cur.execute(f"ALTER TABLE alerts ADD COLUMN IF NOT EXISTS {col} {definition}")
                 except Exception:
                     pass
+            try:
+                cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS plan TEXT DEFAULT 'starter'")
+            except Exception:
+                pass
         conn.commit()
 
 
@@ -177,6 +181,32 @@ def update_profile(user_id: str, garage_name: str, email: str):
         with conn.cursor() as cur:
             cur.execute("UPDATE users SET garage_name=%s, email=%s WHERE id=%s", (garage_name, email, user_id))
         conn.commit()
+
+
+def update_plan(user_id: str, plan: str):
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE users SET plan=%s WHERE id=%s", (plan, user_id))
+        conn.commit()
+
+
+def count_user_alerts(user_id: str) -> int:
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) FROM alerts WHERE user_id=%s", (user_id,))
+            return cur.fetchone()[0]
+
+
+def get_all_active_alerts_with_plan() -> list:
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT a.*, u.subscription_status, u.plan, u.created_at as user_created_at
+                FROM alerts a
+                JOIN users u ON u.id = a.user_id
+                WHERE a.active = TRUE
+            """)
+            return _rows(cur)
 
 
 # ── Alerts ─────────────────────────────────────────────────────────────────────
