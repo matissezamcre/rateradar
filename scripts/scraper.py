@@ -243,20 +243,11 @@ def scrape_autoscout24(alert: dict) -> list:
             for ad in listings[:20]:
                 try:
                     ad_url   = ad.get("url") or ad.get("listingUrl") or ad.get("link") or ""
-                    # Reject dealer/seller page URLs — must be a specific listing
-                    if ad_url and "/offres/" not in ad_url and "/annonces/" not in ad_url:
-                        ad_url = ""
-                    if not ad_url:
-                        # Build URL from guid/id if available
-                        guid = ad.get("guid") or ad.get("id") or ""
-                        if guid:
-                            slug = (ad.get("make","") + "-" + ad.get("model","")).lower().replace(" ","-")
-                            ad_url = f"https://www.autoscout24.fr/offres/{slug}-{guid}"
                     title    = ad.get("title") or f"{ad.get('make','')} {ad.get('model','')}".strip()
                     price    = int(ad.get("price") or ad.get("pricing", {}).get("amount") or 0)
                     km_raw   = ad.get("mileage") or ad.get("mileageInKm") or ad.get("km") or 0
                     km       = int(re.sub(r"[^\d]", "", str(km_raw)) or 0)
-                    if km > 999999: km = 0  # valeur aberrante
+                    if km > 999999: km = 0
                     year_raw = ad.get("firstRegistrationYear") or ad.get("firstRegYear") or ad.get("year") or 0
                     year     = int(str(year_raw)[:4]) if year_raw else 0
                     location = ad.get("location") or ad.get("seller", {}).get("city") or ""
@@ -265,7 +256,7 @@ def scrape_autoscout24(alert: dict) -> list:
 
                     if not ad_url.startswith("http"):
                         ad_url = "https://www.autoscout24.fr" + ad_url
-                    if price == 0 or price > price_max * 1.1 or not ad_url:
+                    if price == 0 or price > price_max * 1.1:
                         continue
 
                     results.append({
