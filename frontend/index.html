@@ -4,165 +4,195 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RateRadar — Surveillance VO pour professionnels</title>
-<meta name="description" content="Scannez La Centrale, AutoScout24 et LeBonCoin automatiquement. Recevez les meilleures opportunités VO chaque matin. Conçu pour les garages.">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<meta name="description" content="Scannez La Centrale, AutoScout24 et LeBonCoin automatiquement. Recevez les meilleures opportunités VO chaque matin.">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
-  --bg:#0d0d0d;
-  --surface:#161616;
-  --border:#232323;
-  --orange:#ff6b1a;
-  --orange-dim:rgba(255,107,26,.12);
-  --orange-border:rgba(255,107,26,.3);
-  --text:#f0ede8;
-  --muted:#7a7571;
-  --green:#22c55e;
+  --bg:#080808;
+  --surface:#0f0f0f;
+  --surface2:#141414;
+  --border:#1e1e1e;
+  --border2:#2a2a2a;
+  --orange:#ff5c00;
+  --orange-light:#ff7a29;
+  --orange-dim:rgba(255,92,0,.08);
+  --orange-border:rgba(255,92,0,.2);
+  --text:#eeebe6;
+  --text2:#a09890;
+  --text3:#5a5450;
 }
-body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden;-webkit-font-smoothing:antialiased}
 
-/* NAV */
-nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 6%;height:64px;display:flex;align-items:center;gap:20px;background:rgba(13,13,13,.85);backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,.04)}
-.logo{font-size:20px;font-weight:900;letter-spacing:-.5px;margin-right:auto;color:#fff}
-.logo span{color:var(--orange)}
-.nav-link{font-size:13.5px;color:var(--muted);text-decoration:none;font-weight:500;transition:color .15s}
-.nav-link:hover{color:var(--text)}
-.nav-login{font-size:13.5px;color:var(--text);text-decoration:none;font-weight:500}
-.nav-cta{background:var(--orange);color:#fff;font-weight:700;font-size:13.5px;padding:9px 20px;border-radius:7px;text-decoration:none;transition:filter .15s}
-.nav-cta:hover{filter:brightness(1.1)}
-
-/* HERO */
-.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:120px 6% 80px;position:relative;overflow:hidden}
-.hero-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,107,26,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,107,26,.04) 1px,transparent 1px);background-size:60px 60px;pointer-events:none}
-.hero-glow{position:absolute;top:-20%;left:-10%;width:700px;height:700px;background:radial-gradient(circle,rgba(255,107,26,.07) 0%,transparent 65%);pointer-events:none}
-.hero-content{position:relative;max-width:780px}
-.hero-eyebrow{display:inline-flex;align-items:center;gap:8px;background:var(--orange-dim);border:1px solid var(--orange-border);border-radius:4px;padding:6px 14px;font-size:12px;font-weight:700;color:var(--orange);letter-spacing:.08em;text-transform:uppercase;margin-bottom:28px}
-.hero-eyebrow::before{content:'';width:6px;height:6px;background:var(--orange);border-radius:50%;animation:pulse 2s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-h1{font-size:clamp(42px,7vw,82px);font-weight:900;line-height:1.0;letter-spacing:-2px;color:#fff;margin-bottom:24px}
-h1 em{color:var(--orange);font-style:normal;display:block}
-.hero-sub{font-size:17px;color:var(--muted);max-width:520px;line-height:1.7;margin-bottom:40px}
-.hero-sub strong{color:var(--text)}
-.hero-actions{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-.btn-orange{background:var(--orange);color:#fff;font-weight:700;font-size:15px;padding:14px 28px;border-radius:8px;text-decoration:none;transition:filter .15s;display:inline-flex;align-items:center;gap:8px}
-.btn-orange:hover{filter:brightness(1.1)}
-.btn-ghost{color:var(--muted);font-size:14px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;transition:color .15s}
-.btn-ghost:hover{color:var(--text)}
-.hero-stats{display:flex;gap:40px;margin-top:64px;padding-top:40px;border-top:1px solid var(--border)}
-.hero-stat-val{font-size:30px;font-weight:900;color:#fff;letter-spacing:-1px}
-.hero-stat-label{font-size:12px;color:var(--muted);margin-top:2px}
-
-/* SOURCES TICKER */
-.ticker{background:var(--surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:14px 0;overflow:hidden;white-space:nowrap}
-.ticker-inner{display:inline-flex;gap:60px;animation:ticker 20s linear infinite}
-.ticker-item{font-size:13px;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:8px}
-.ticker-item::before{content:'';width:6px;height:6px;background:var(--orange);border-radius:50%}
+/* ── ANIMATIONS ── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
 @keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.85)}}
+@keyframes lineGrow{from{width:0}to{width:100%}}
+@keyframes countUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 
-/* PROBLEM */
-.problem{padding:100px 6%;max-width:1100px;margin:0 auto}
-.section-label{font-size:11px;font-weight:700;color:var(--orange);letter-spacing:.12em;text-transform:uppercase;margin-bottom:14px}
-.problem h2{font-size:clamp(28px,4vw,48px);font-weight:900;letter-spacing:-1px;color:#fff;max-width:600px;margin-bottom:20px;line-height:1.1}
-.problem p{font-size:16px;color:var(--muted);max-width:560px;line-height:1.7;margin-bottom:40px}
-.pain-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
-.pain-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:24px}
-.pain-icon{font-size:24px;margin-bottom:12px}
-.pain-card h3{font-size:14px;font-weight:700;color:#fff;margin-bottom:6px}
-.pain-card p{font-size:13px;color:var(--muted);line-height:1.6}
+.reveal{opacity:0;transform:translateY(28px);transition:opacity .7s cubic-bezier(.16,1,.3,1),transform .7s cubic-bezier(.16,1,.3,1)}
+.reveal.visible{opacity:1;transform:translateY(0)}
+.reveal-delay-1{transition-delay:.1s}
+.reveal-delay-2{transition-delay:.2s}
+.reveal-delay-3{transition-delay:.3s}
+.reveal-delay-4{transition-delay:.4s}
+.reveal-delay-5{transition-delay:.5s}
 
-/* HOW */
-.how{padding:0 6% 100px;max-width:1100px;margin:0 auto}
-.how h2{font-size:clamp(28px,4vw,48px);font-weight:900;letter-spacing:-1px;color:#fff;margin-bottom:48px;line-height:1.1}
-.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;background:var(--border);border-radius:12px;overflow:hidden}
-.step{background:var(--surface);padding:32px;position:relative}
-.step-n{font-size:11px;font-weight:800;color:var(--orange);letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px}
-.step h3{font-size:17px;font-weight:700;color:#fff;margin-bottom:8px}
-.step p{font-size:13.5px;color:var(--muted);line-height:1.65}
-@media(max-width:700px){.steps{grid-template-columns:1fr}}
+/* ── NAV ── */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;height:60px;display:flex;align-items:center;padding:0 6%;gap:24px;background:rgba(8,8,8,.8);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-bottom:1px solid rgba(255,255,255,.04);transition:background .3s}
+.logo{font-size:18px;font-weight:900;letter-spacing:-.5px;color:#fff;margin-right:auto;text-decoration:none}
+.logo span{color:var(--orange)}
+.nav-link{font-size:13px;color:var(--text3);text-decoration:none;font-weight:500;letter-spacing:.01em;transition:color .2s}
+.nav-link:hover{color:var(--text)}
+.nav-login{font-size:13px;color:var(--text2);text-decoration:none;font-weight:500;transition:color .2s}
+.nav-login:hover{color:var(--text)}
+.nav-cta{background:var(--orange);color:#fff;font-weight:700;font-size:13px;padding:8px 18px;border-radius:6px;text-decoration:none;letter-spacing:.01em;transition:background .2s,transform .15s}
+.nav-cta:hover{background:var(--orange-light);transform:translateY(-1px)}
 
-/* SCREEN MOCKUP */
-.mockup-section{padding:0 6% 100px;max-width:1100px;margin:0 auto}
-.mockup-section h2{font-size:clamp(28px,4vw,48px);font-weight:900;letter-spacing:-1px;color:#fff;margin-bottom:8px}
-.mockup-section .sub{font-size:15px;color:var(--muted);margin-bottom:40px}
-.screen{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden}
-.screen-bar{background:#111;padding:14px 20px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)}
-.dot{width:10px;height:10px;border-radius:50%}
-.screen-url{margin-left:12px;font-size:12px;color:var(--muted);background:#1a1a1a;border:1px solid var(--border);border-radius:4px;padding:3px 12px}
-.screen-body{display:grid;grid-template-columns:260px 1fr;min-height:380px}
-.screen-sidebar{border-right:1px solid var(--border);padding:20px;display:flex;flex-direction:column;gap:10px}
-.screen-sidebar-title{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px}
-.s-alert{background:#1d1d1d;border:1px solid var(--border);border-radius:8px;padding:12px;cursor:default}
-.s-alert.on{border-color:var(--orange-border);background:rgba(255,107,26,.06)}
-.s-alert-name{font-size:13px;font-weight:600;color:#fff;margin-bottom:3px;display:flex;align-items:center;gap:6px}
-.s-dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0}
-.s-dot.off{background:#333}
-.s-alert-meta{font-size:11px;color:var(--muted)}
-.screen-main{padding:20px;display:flex;flex-direction:column;gap:12px}
-.screen-main-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
-.screen-title{font-size:14px;font-weight:700;color:#fff}
-.s-scan-btn{background:var(--orange);color:#fff;font-size:11px;font-weight:700;padding:6px 14px;border-radius:5px;border:none;cursor:default}
-.s-vehicles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.s-vehicle{background:#1d1d1d;border:1px solid var(--border);border-radius:8px;overflow:hidden}
-.s-v-img{height:72px;background:#252525;display:flex;align-items:center;justify-content:center;font-size:22px}
-.s-v-body{padding:10px}
-.s-v-name{font-size:11px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px}
-.s-v-price{font-size:15px;font-weight:900;color:var(--orange);margin-bottom:4px}
-.s-v-meta{font-size:10px;color:var(--muted)}
-.s-badge{display:inline-block;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;margin-top:4px}
-.badge-green{background:rgba(34,197,94,.15);color:var(--green)}
-.badge-orange{background:rgba(255,107,26,.15);color:var(--orange)}
-@media(max-width:700px){.screen-body{grid-template-columns:1fr}.screen-sidebar{display:none}.s-vehicles{grid-template-columns:1fr 1fr}}
+/* ── HERO ── */
+.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:120px 6% 80px;position:relative;overflow:hidden}
+.hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% -10%,rgba(255,92,0,.06) 0%,transparent 60%);pointer-events:none}
+.hero-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.02) 1px,transparent 1px);background-size:72px 72px;pointer-events:none;mask-image:radial-gradient(ellipse 70% 70% at 50% 0%,black 0%,transparent 70%)}
+.hero-content{position:relative;max-width:820px;animation:fadeUp .9s cubic-bezier(.16,1,.3,1) both}
+.hero-label{display:inline-flex;align-items:center;gap:8px;margin-bottom:32px}
+.hero-label-dot{width:6px;height:6px;background:var(--orange);border-radius:50%;animation:pulse 2.5s ease-in-out infinite}
+.hero-label-text{font-size:11px;font-weight:700;color:var(--orange);letter-spacing:.14em;text-transform:uppercase}
+h1{font-size:clamp(44px,7.5vw,88px);font-weight:900;line-height:.96;letter-spacing:-3px;color:#fff;margin-bottom:28px}
+h1 em{font-style:normal;color:var(--orange)}
+.hero-sub{font-size:17px;color:var(--text2);max-width:500px;line-height:1.75;margin-bottom:44px;font-weight:400}
+.hero-actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.btn-primary{background:var(--orange);color:#fff;font-weight:700;font-size:14px;padding:13px 26px;border-radius:7px;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:background .2s,transform .15s,box-shadow .2s;box-shadow:0 0 0 0 rgba(255,92,0,0)}
+.btn-primary:hover{background:var(--orange-light);transform:translateY(-2px);box-shadow:0 8px 30px rgba(255,92,0,.25)}
+.btn-primary svg{transition:transform .2s}
+.btn-primary:hover svg{transform:translateX(3px)}
+.btn-ghost{color:var(--text2);font-size:14px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;font-weight:500;transition:color .2s}
+.btn-ghost:hover{color:var(--text)}
+.hero-stats{display:flex;gap:0;margin-top:72px;padding-top:40px;border-top:1px solid var(--border)}
+.hero-stat{flex:1;padding-right:32px}
+.hero-stat+.hero-stat{padding-left:32px;border-left:1px solid var(--border)}
+.hero-stat-val{font-size:32px;font-weight:900;color:#fff;letter-spacing:-1.5px;line-height:1}
+.hero-stat-label{font-size:12px;color:var(--text3);margin-top:5px;font-weight:500}
 
-/* FEATURES */
-.features-section{padding:100px 6%;max-width:1100px;margin:0 auto}
-.features-section h2{font-size:clamp(28px,4vw,48px);font-weight:900;letter-spacing:-1px;color:#fff;margin-bottom:48px}
-.feats{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px}
-.feat{padding:28px 0;border-top:1px solid var(--border)}
-.feat-icon{font-size:26px;margin-bottom:14px}
-.feat h3{font-size:15px;font-weight:700;color:#fff;margin-bottom:6px}
-.feat p{font-size:13.5px;color:var(--muted);line-height:1.65}
+/* ── TICKER ── */
+.ticker{background:var(--surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:13px 0;overflow:hidden;white-space:nowrap}
+.ticker-inner{display:inline-flex;gap:0;animation:ticker 24s linear infinite}
+.ticker-item{font-size:12px;font-weight:600;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;padding:0 40px;position:relative}
+.ticker-item::after{content:'';position:absolute;right:0;top:50%;transform:translateY(-50%);width:3px;height:3px;background:var(--orange);border-radius:50%}
 
-/* PRICING */
-.pricing-section{padding:100px 6%;max-width:900px;margin:0 auto}
-.pricing-section h2{font-size:clamp(28px,4vw,48px);font-weight:900;letter-spacing:-1px;color:#fff;margin-bottom:8px}
-.pricing-section .sub{font-size:15px;color:var(--muted);margin-bottom:48px}
-.plans{display:grid;grid-template-columns:1fr 1fr;gap:20px}
-@media(max-width:600px){.plans{grid-template-columns:1fr}}
-.plan{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:32px;position:relative}
-.plan.featured{border-color:var(--orange-border);background:rgba(255,107,26,.04)}
-.plan-tag{position:absolute;top:-11px;left:28px;background:var(--orange);color:#fff;font-size:10px;font-weight:800;padding:3px 12px;border-radius:20px;text-transform:uppercase;letter-spacing:.06em}
-.plan-tier{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px}
-.plan-price{font-size:48px;font-weight:900;color:#fff;letter-spacing:-2px;margin-bottom:2px}
-.plan-price sup{font-size:20px;vertical-align:super;letter-spacing:0}
-.plan-price sub{font-size:16px;font-weight:500;color:var(--muted);letter-spacing:0}
-.plan-desc{font-size:13px;color:var(--muted);margin-bottom:24px;line-height:1.5}
-.plan-list{list-style:none;display:flex;flex-direction:column;gap:10px;margin-bottom:28px}
-.plan-list li{font-size:13.5px;color:var(--text);display:flex;align-items:flex-start;gap:10px}
-.plan-list li::before{content:'→';color:var(--orange);font-weight:700;flex-shrink:0}
-.plan-btn{display:block;text-align:center;width:100%;padding:12px;font-size:14px;font-weight:700;border-radius:8px;text-decoration:none;transition:filter .15s;font-family:'Inter',sans-serif;border:none;cursor:pointer}
+/* ── SECTIONS COMMUNES ── */
+.section{padding:120px 6%;max-width:1200px;margin:0 auto}
+.section-label{font-size:10.5px;font-weight:700;color:var(--orange);letter-spacing:.16em;text-transform:uppercase;margin-bottom:16px}
+.section-h2{font-size:clamp(28px,4vw,52px);font-weight:900;letter-spacing:-1.5px;color:#fff;line-height:1.05}
+.section-sub{font-size:16px;color:var(--text2);margin-top:14px;line-height:1.7;max-width:520px}
+
+/* ── PROBLÈME ── */
+.pain-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border-radius:14px;overflow:hidden;margin-top:52px}
+@media(max-width:700px){.pain-cards{grid-template-columns:1fr}}
+.pain-card{background:var(--surface);padding:36px 32px;transition:background .2s}
+.pain-card:hover{background:var(--surface2)}
+.pain-num{font-size:11px;font-weight:800;color:var(--text3);letter-spacing:.12em;text-transform:uppercase;margin-bottom:24px}
+.pain-card h3{font-size:16px;font-weight:700;color:#fff;margin-bottom:10px;letter-spacing:-.2px}
+.pain-card p{font-size:13.5px;color:var(--text2);line-height:1.65}
+
+/* ── HOW ── */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:32px;margin-top:52px}
+@media(max-width:700px){.steps{grid-template-columns:1fr;gap:24px}}
+.step{position:relative;padding:32px;background:var(--surface);border:1px solid var(--border);border-radius:12px;transition:border-color .2s,transform .2s}
+.step:hover{border-color:var(--border2);transform:translateY(-3px)}
+.step-line{position:absolute;top:0;left:32px;height:2px;background:var(--orange);width:32px}
+.step-n{font-size:10px;font-weight:800;color:var(--text3);letter-spacing:.14em;text-transform:uppercase;margin-bottom:20px;margin-top:16px}
+.step h3{font-size:16px;font-weight:700;color:#fff;margin-bottom:10px;letter-spacing:-.2px}
+.step p{font-size:13.5px;color:var(--text2);line-height:1.65}
+
+/* ── MOCKUP ── */
+.mockup-wrap{margin-top:52px;border-radius:14px;overflow:hidden;border:1px solid var(--border);background:var(--surface)}
+.mockup-bar{background:#0a0a0a;padding:14px 20px;display:flex;align-items:center;gap:7px;border-bottom:1px solid var(--border)}
+.mdot{width:10px;height:10px;border-radius:50%}
+.murl{margin-left:14px;font-size:11.5px;color:var(--text3);background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:3px 14px;font-family:'Inter',monospace;letter-spacing:.02em}
+.mockup-body{display:grid;grid-template-columns:240px 1fr;min-height:360px}
+@media(max-width:700px){.mockup-body{grid-template-columns:1fr}}
+.m-sidebar{border-right:1px solid var(--border);padding:20px;display:flex;flex-direction:column;gap:8px}
+.m-sidebar-label{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.12em;margin-bottom:6px}
+.m-alert{padding:12px;border-radius:8px;border:1px solid transparent;transition:border-color .2s}
+.m-alert.active{border-color:var(--orange-border);background:var(--orange-dim)}
+.m-alert-name{font-size:12.5px;font-weight:600;color:#fff;display:flex;align-items:center;gap:6px;margin-bottom:3px}
+.m-dot{width:5px;height:5px;border-radius:50%;background:#22c55e;flex-shrink:0}
+.m-dot.off{background:var(--border2)}
+.m-alert-meta{font-size:11px;color:var(--text3)}
+.m-main{padding:20px;display:flex;flex-direction:column;gap:14px}
+.m-header{display:flex;align-items:center;justify-content:space-between}
+.m-title{font-size:13px;font-weight:700;color:#fff}
+.m-scan{background:var(--orange);color:#fff;font-size:11px;font-weight:700;padding:6px 14px;border-radius:5px;letter-spacing:.02em}
+.m-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media(max-width:700px){.m-grid{grid-template-columns:1fr 1fr}}
+.m-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.m-img{height:68px;background:linear-gradient(135deg,#161616,#1e1e1e);display:flex;align-items:center;justify-content:center}
+.m-img svg{opacity:.25}
+.m-body{padding:10px}
+.m-name{font-size:11px;font-weight:600;color:#fff;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.m-price{font-size:14px;font-weight:900;color:var(--orange);margin-bottom:5px;letter-spacing:-.3px}
+.m-meta{font-size:10px;color:var(--text3)}
+.m-score{display:inline-block;font-size:9px;font-weight:700;padding:2px 7px;border-radius:3px;margin-top:5px;background:rgba(34,197,94,.12);color:#22c55e}
+
+/* ── FEATURES ── */
+.feats{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-top:52px;border:1px solid var(--border);border-radius:14px;overflow:hidden}
+@media(max-width:700px){.feats{grid-template-columns:1fr}}
+.feat{padding:36px 32px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);transition:background .2s}
+.feat:hover{background:var(--surface)}
+.feat:nth-child(3n){border-right:none}
+.feat:nth-child(4),.feat:nth-child(5),.feat:nth-child(6){border-bottom:none}
+.feat-icon-wrap{width:36px;height:36px;border:1px solid var(--border2);border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:20px}
+.feat-icon-wrap svg{color:var(--orange)}
+.feat h3{font-size:14.5px;font-weight:700;color:#fff;margin-bottom:8px;letter-spacing:-.2px}
+.feat p{font-size:13px;color:var(--text2);line-height:1.65}
+
+/* ── PRICING ── */
+.plans{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:52px}
+@media(max-width:900px){.plans{grid-template-columns:1fr}}
+.plan{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:36px;position:relative;transition:border-color .2s,transform .2s}
+.plan:hover{transform:translateY(-4px)}
+.plan.featured{border-color:var(--orange-border);background:var(--surface)}
+.plan.featured::before{content:'Le plus populaire';position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--orange);color:#fff;font-size:10px;font-weight:800;padding:4px 14px;border-radius:20px;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+.plan-tier{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.12em;margin-bottom:16px}
+.plan-price{font-size:52px;font-weight:900;color:#fff;letter-spacing:-3px;line-height:1;margin-bottom:4px}
+.plan-price sup{font-size:20px;vertical-align:super;letter-spacing:0;font-weight:700;color:var(--text2)}
+.plan-price sub{font-size:14px;font-weight:500;color:var(--text3);letter-spacing:0;vertical-align:baseline}
+.plan-desc{font-size:13px;color:var(--text2);margin-bottom:28px;line-height:1.55;margin-top:10px}
+.plan-divider{height:1px;background:var(--border);margin-bottom:24px}
+.plan-list{list-style:none;display:flex;flex-direction:column;gap:12px;margin-bottom:32px}
+.plan-list li{font-size:13px;color:var(--text);display:flex;align-items:flex-start;gap:10px;line-height:1.4}
+.plan-list li::before{content:'';width:16px;height:16px;border-radius:4px;background:var(--orange-dim);border:1px solid var(--orange-border);flex-shrink:0;margin-top:1px;background-image:url("data:image/svg+xml,%3Csvg width='10' height='8' viewBox='0 0 10 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 4L3.5 6.5L9 1' stroke='%23ff5c00' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:center}
+.plan-list li.off{color:var(--text3)}
+.plan-list li.off::before{background-image:none;opacity:.4}
+.plan-btn{display:block;text-align:center;width:100%;padding:13px;font-size:13.5px;font-weight:700;border-radius:7px;text-decoration:none;transition:all .2s;letter-spacing:.01em}
 .plan-btn.primary{background:var(--orange);color:#fff}
-.plan-btn.primary:hover{filter:brightness(1.1)}
-.plan-btn.secondary{background:transparent;border:1px solid var(--border);color:var(--text)}
-.plan-btn.secondary:hover{border-color:#555}
+.plan-btn.primary:hover{background:var(--orange-light);transform:translateY(-1px)}
+.plan-btn.secondary{background:transparent;border:1px solid var(--border2);color:var(--text2)}
+.plan-btn.secondary:hover{border-color:#555;color:var(--text)}
 
-/* CTA */
-.cta{padding:100px 6%;text-align:center;position:relative;overflow:hidden}
-.cta-glow{position:absolute;inset:0;background:radial-gradient(ellipse 60% 70% at 50% 50%,rgba(255,107,26,.06) 0%,transparent 65%);pointer-events:none}
-.cta h2{font-size:clamp(30px,5vw,60px);font-weight:900;letter-spacing:-2px;color:#fff;margin-bottom:16px;position:relative}
-.cta p{font-size:16px;color:var(--muted);margin-bottom:36px;position:relative}
+/* ── CTA FINAL ── */
+.cta-section{padding:120px 6%;text-align:center;position:relative;overflow:hidden}
+.cta-bg{position:absolute;inset:0;background:radial-gradient(ellipse 50% 80% at 50% 100%,rgba(255,92,0,.05) 0%,transparent 60%);pointer-events:none}
+.cta-section h2{font-size:clamp(32px,5vw,64px);font-weight:900;letter-spacing:-2.5px;color:#fff;margin-bottom:16px;position:relative;line-height:1}
+.cta-section p{font-size:15px;color:var(--text2);margin-bottom:40px;position:relative}
+.cta-note{font-size:12px;color:var(--text3);margin-top:16px}
 
-/* FOOTER */
-footer{border-top:1px solid var(--border);padding:28px 6%;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
-footer .logo{font-size:16px;font-weight:900}
-footer p{font-size:13px;color:var(--muted)}
-footer a{color:var(--muted);text-decoration:none;font-size:13px;transition:color .15s}
-footer a:hover{color:var(--text)}
+/* ── FOOTER ── */
+footer{border-top:1px solid var(--border);padding:24px 6%;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+.footer-logo{font-size:15px;font-weight:900;color:#fff;letter-spacing:-.3px}
+.footer-logo span{color:var(--orange)}
+footer p{font-size:12px;color:var(--text3)}
+footer a{color:var(--text3);text-decoration:none;font-size:12px;transition:color .2s}
+footer a:hover{color:var(--text2)}
 </style>
 </head>
 <body>
 
 <nav>
-  <div class="logo">Rate<span>Radar</span></div>
+  <a href="/" class="logo">Rate<span>Radar</span></a>
   <a href="#how" class="nav-link">Comment ça marche</a>
   <a href="#pricing" class="nav-link">Tarifs</a>
   <a href="/login" class="nav-login">Connexion</a>
@@ -171,28 +201,34 @@ footer a:hover{color:var(--text)}
 
 <!-- HERO -->
 <section class="hero">
+  <div class="hero-bg"></div>
   <div class="hero-grid"></div>
-  <div class="hero-glow"></div>
   <div class="hero-content">
-    <div class="hero-eyebrow">Pour professionnels VO</div>
-    <h1>Repérez les VO<em>avant vos concurrents</em></h1>
-    <p class="hero-sub">RateRadar scanne <strong>La Centrale, AutoScout24 et LeBonCoin</strong> chaque jour et vous envoie les meilleures opportunités classées par pertinence. Plus jamais une bonne affaire ratée.</p>
+    <div class="hero-label">
+      <span class="hero-label-dot"></span>
+      <span class="hero-label-text">Veille automatisée pour professionnels VO</span>
+    </div>
+    <h1>Repérez les<br>meilleures<br><em>opportunités VO</em></h1>
+    <p class="hero-sub">RateRadar surveille La Centrale, AutoScout24 et LeBonCoin en continu. Chaque matin, les meilleures annonces classées par pertinence arrivent dans votre boîte.</p>
     <div class="hero-actions">
-      <a href="/register" class="btn-orange">Démarrer gratuitement — 14 jours →</a>
-      <a href="#how" class="btn-ghost">Voir comment ça marche ↓</a>
+      <a href="/register" class="btn-primary">
+        Démarrer gratuitement — 14 jours
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7h10M7 2l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+      <a href="#how" class="btn-ghost">Voir comment ça marche</a>
     </div>
     <div class="hero-stats">
-      <div>
-        <div class="hero-stat-val">3</div>
+      <div class="hero-stat">
+        <div class="hero-stat-val" data-count="3">3</div>
         <div class="hero-stat-label">Plateformes surveillées</div>
       </div>
-      <div>
+      <div class="hero-stat">
         <div class="hero-stat-val">8h</div>
         <div class="hero-stat-label">Rapport quotidien</div>
       </div>
-      <div>
+      <div class="hero-stat">
         <div class="hero-stat-val">200</div>
-        <div class="hero-stat-label">Points de score max</div>
+        <div class="hero-stat-label">Points de score maximum</div>
       </div>
     </div>
   </div>
@@ -204,124 +240,134 @@ footer a:hover{color:var(--text)}
     <span class="ticker-item">La Centrale</span>
     <span class="ticker-item">AutoScout24</span>
     <span class="ticker-item">LeBonCoin</span>
-    <span class="ticker-item">Alertes multi-critères</span>
     <span class="ticker-item">Score de pertinence</span>
     <span class="ticker-item">Email digest 8h00</span>
+    <span class="ticker-item">Alertes multi-critères</span>
+    <span class="ticker-item">Historique complet</span>
     <span class="ticker-item">La Centrale</span>
     <span class="ticker-item">AutoScout24</span>
     <span class="ticker-item">LeBonCoin</span>
-    <span class="ticker-item">Alertes multi-critères</span>
     <span class="ticker-item">Score de pertinence</span>
     <span class="ticker-item">Email digest 8h00</span>
+    <span class="ticker-item">Alertes multi-critères</span>
+    <span class="ticker-item">Historique complet</span>
   </div>
 </div>
 
-<!-- PROBLEM -->
-<section class="problem">
-  <div class="section-label">Le problème</div>
-  <h2>Surveiller manuellement, c'est un travail à plein temps</h2>
-  <p>Entre La Centrale, AutoScout24 et LeBonCoin, les bonnes annonces partent en quelques heures. Vous ne pouvez pas tout surveiller.</p>
+<!-- PROBLÈME -->
+<section class="section" id="problem">
+  <div class="section-label reveal">Le problème</div>
+  <h2 class="section-h2 reveal reveal-delay-1">Surveiller manuellement,<br>c'est un travail à plein temps</h2>
   <div class="pain-cards">
-    <div class="pain-card">
-      <div class="pain-icon">⏰</div>
+    <div class="pain-card reveal reveal-delay-1">
+      <div class="pain-num">01</div>
       <h3>Trop chronophage</h3>
-      <p>Consulter 3 sites chaque matin, filtrer, trier — ça prend une heure que vous n'avez pas.</p>
+      <p>Consulter 3 plateformes chaque matin, filtrer, trier — ça prend une heure que vous n'avez pas.</p>
     </div>
-    <div class="pain-card">
-      <div class="pain-icon">😤</div>
+    <div class="pain-card reveal reveal-delay-2">
+      <div class="pain-num">02</div>
       <h3>Annonces déjà parties</h3>
-      <p>Vous voyez l'affaire du siècle, vous appelez — vendu hier. Vous êtes arrivé trop tard.</p>
+      <p>Vous repérez l'affaire du siècle, vous appelez — vendu hier matin. Vous êtes arrivé trop tard.</p>
     </div>
-    <div class="pain-card">
-      <div class="pain-icon">📉</div>
-      <h3>Mauvaises décisions</h3>
-      <p>Sans comparaison automatique, difficile de savoir si un prix est vraiment intéressant.</p>
+    <div class="pain-card reveal reveal-delay-3">
+      <div class="pain-num">03</div>
+      <h3>Pas de comparaison</h3>
+      <p>Sans données agrégées, impossible de savoir si un prix est vraiment sous le marché ou non.</p>
     </div>
   </div>
 </section>
 
 <!-- HOW -->
-<section class="how" id="how">
-  <div class="section-label">Comment ça marche</div>
-  <h2>Automatisez votre veille VO en 3 étapes</h2>
+<section class="section" id="how">
+  <div class="section-label reveal">Comment ça marche</div>
+  <h2 class="section-h2 reveal reveal-delay-1">Opérationnel en<br>3 minutes</h2>
   <div class="steps">
-    <div class="step">
+    <div class="step reveal reveal-delay-1">
+      <div class="step-line"></div>
       <div class="step-n">Étape 01</div>
       <h3>Configurez vos critères</h3>
-      <p>Marque, modèle, budget max, km max, année minimum. Créez autant d'alertes que vous avez de segments à surveiller.</p>
+      <p>Marque, modèle, budget maximum, kilométrage, année. Créez autant d'alertes que de segments à surveiller.</p>
     </div>
-    <div class="step">
+    <div class="step reveal reveal-delay-2">
+      <div class="step-line"></div>
       <div class="step-n">Étape 02</div>
       <h3>On scanne pour vous</h3>
-      <p>Chaque matin à 8h, nos robots parcourent les 3 plateformes et collectent toutes les annonces correspondantes.</p>
+      <p>Plusieurs fois par jour, nos robots parcourent les 3 plateformes et collectent toutes les annonces correspondantes.</p>
     </div>
-    <div class="step">
+    <div class="step reveal reveal-delay-3">
+      <div class="step-line"></div>
       <div class="step-n">Étape 03</div>
       <h3>Recevez les opportunités</h3>
-      <p>Un email avec les meilleures annonces classées par score. Cliquez, appelez, achetez — avant la concurrence.</p>
+      <p>Un email avec les meilleures annonces classées par score de pertinence. Cliquez, appelez, achetez avant la concurrence.</p>
     </div>
   </div>
 </section>
 
 <!-- MOCKUP -->
-<section class="mockup-section">
-  <div class="section-label">Le dashboard</div>
-  <h2>Votre tour de contrôle VO</h2>
-  <p class="sub">Toutes vos alertes, tous les véhicules trouvés, en un seul endroit.</p>
-  <div class="screen">
-    <div class="screen-bar">
-      <div class="dot" style="background:#ff5f57"></div>
-      <div class="dot" style="background:#febc2e"></div>
-      <div class="dot" style="background:#28c840"></div>
-      <div class="screen-url">rateradar-xrk2.onrender.com/dashboard</div>
+<section class="section">
+  <div class="section-label reveal">Le dashboard</div>
+  <h2 class="section-h2 reveal reveal-delay-1">Votre tour de contrôle VO</h2>
+  <p class="section-sub reveal reveal-delay-2">Toutes vos alertes et tous les véhicules trouvés, organisés en un seul endroit.</p>
+  <div class="mockup-wrap reveal reveal-delay-2">
+    <div class="mockup-bar">
+      <div class="mdot" style="background:#ff5f57"></div>
+      <div class="mdot" style="background:#febc2e"></div>
+      <div class="mdot" style="background:#28c840"></div>
+      <div class="murl">rateradar.fr/dashboard</div>
     </div>
-    <div class="screen-body">
-      <div class="screen-sidebar">
-        <div class="screen-sidebar-title">Mes alertes</div>
-        <div class="s-alert on">
-          <div class="s-alert-name"><span class="s-dot"></span>BMW Série 3 diesel</div>
-          <div class="s-alert-meta">max 18 000€ · 120 000 km · 2016+</div>
+    <div class="mockup-body">
+      <div class="m-sidebar">
+        <div class="m-sidebar-label">Mes alertes</div>
+        <div class="m-alert active">
+          <div class="m-alert-name"><span class="m-dot"></span>BMW Série 3 diesel</div>
+          <div class="m-alert-meta">max 18 000 € · 120 000 km · 2016+</div>
         </div>
-        <div class="s-alert on">
-          <div class="s-alert-name"><span class="s-dot"></span>Audi A4 Avant</div>
-          <div class="s-alert-meta">max 22 000€ · 150 000 km · 2017+</div>
+        <div class="m-alert active">
+          <div class="m-alert-name"><span class="m-dot"></span>Audi A4 Avant</div>
+          <div class="m-alert-meta">max 22 000 € · 150 000 km · 2017+</div>
         </div>
-        <div class="s-alert">
-          <div class="s-alert-name"><span class="s-dot off"></span>Peugeot 308 SW</div>
-          <div class="s-alert-meta">max 12 000€ · 100 000 km</div>
+        <div class="m-alert">
+          <div class="m-alert-name"><span class="m-dot off"></span>Peugeot 308 SW</div>
+          <div class="m-alert-meta">max 12 000 € · 100 000 km</div>
         </div>
       </div>
-      <div class="screen-main">
-        <div class="screen-main-top">
-          <div class="screen-title">BMW Série 3 diesel — 7 véhicules</div>
-          <div class="s-scan-btn">⚡ Scanner</div>
+      <div class="m-main">
+        <div class="m-header">
+          <div class="m-title">BMW Série 3 — 9 véhicules</div>
+          <div class="m-scan">Scanner maintenant</div>
         </div>
-        <div class="s-vehicles">
-          <div class="s-vehicle">
-            <div class="s-v-img">🚗</div>
-            <div class="s-v-body">
-              <div class="s-v-name">BMW 320d Touring 2019</div>
-              <div class="s-v-price">14 900 €</div>
-              <div class="s-v-meta">87 000 km · Lyon · lacentrale</div>
-              <div class="s-badge badge-green">Score 158</div>
+        <div class="m-grid">
+          <div class="m-card">
+            <div class="m-img">
+              <svg width="32" height="22" viewBox="0 0 32 22" fill="none"><rect x="2" y="8" width="28" height="12" rx="3" stroke="currentColor" stroke-width="1.5"/><path d="M6 8V7a10 10 0 0120 0v1" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="20" r="2" fill="currentColor"/><circle cx="24" cy="20" r="2" fill="currentColor"/></svg>
+            </div>
+            <div class="m-body">
+              <div class="m-name">BMW 320d Touring 2019</div>
+              <div class="m-price">14 900 €</div>
+              <div class="m-meta">87 000 km · Lyon</div>
+              <div class="m-score">Score 158</div>
             </div>
           </div>
-          <div class="s-vehicle">
-            <div class="s-v-img">🚗</div>
-            <div class="s-v-body">
-              <div class="s-v-name">BMW 318d Auto 2020</div>
-              <div class="s-v-price">16 200 €</div>
-              <div class="s-v-meta">63 000 km · Paris · autoscout24</div>
-              <div class="s-badge badge-orange">Score 134</div>
+          <div class="m-card">
+            <div class="m-img">
+              <svg width="32" height="22" viewBox="0 0 32 22" fill="none"><rect x="2" y="8" width="28" height="12" rx="3" stroke="currentColor" stroke-width="1.5"/><path d="M6 8V7a10 10 0 0120 0v1" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="20" r="2" fill="currentColor"/><circle cx="24" cy="20" r="2" fill="currentColor"/></svg>
+            </div>
+            <div class="m-body">
+              <div class="m-name">BMW 318d Auto 2020</div>
+              <div class="m-price">16 200 €</div>
+              <div class="m-meta">63 000 km · Paris</div>
+              <div class="m-score">Score 134</div>
             </div>
           </div>
-          <div class="s-vehicle">
-            <div class="s-v-img">🚗</div>
-            <div class="s-v-body">
-              <div class="s-v-name">BMW 320d M Sport 2018</div>
-              <div class="s-v-price">13 400 €</div>
-              <div class="s-v-meta">108 000 km · Bordeaux</div>
-              <div class="s-badge badge-orange">Score 119</div>
+          <div class="m-card">
+            <div class="m-img">
+              <svg width="32" height="22" viewBox="0 0 32 22" fill="none"><rect x="2" y="8" width="28" height="12" rx="3" stroke="currentColor" stroke-width="1.5"/><path d="M6 8V7a10 10 0 0120 0v1" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="20" r="2" fill="currentColor"/><circle cx="24" cy="20" r="2" fill="currentColor"/></svg>
+            </div>
+            <div class="m-body">
+              <div class="m-name">BMW 320d M Sport 2018</div>
+              <div class="m-price">13 400 €</div>
+              <div class="m-meta">108 000 km · Bordeaux</div>
+              <div class="m-score">Score 119</div>
             </div>
           </div>
         </div>
@@ -331,90 +377,159 @@ footer a:hover{color:var(--text)}
 </section>
 
 <!-- FEATURES -->
-<section class="features-section">
-  <div class="section-label">Fonctionnalités</div>
-  <h2>Tout ce qu'il faut pour un acheteur VO sérieux</h2>
+<section class="section" id="features">
+  <div class="section-label reveal">Fonctionnalités</div>
+  <h2 class="section-h2 reveal reveal-delay-1">Conçu pour les<br>acheteurs VO sérieux</h2>
   <div class="feats">
-    <div class="feat">
-      <div class="feat-icon">📊</div>
-      <h3>Score de pertinence 0-200</h3>
+    <div class="feat reveal reveal-delay-1">
+      <div class="feat-icon-wrap">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 12l4-4 3 3 5-7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <h3>Score de pertinence 0–200</h3>
       <p>Chaque annonce est notée sur le rapport prix/budget, le kilométrage et l'année. Les meilleures affaires remontent automatiquement.</p>
     </div>
-    <div class="feat">
-      <div class="feat-icon">📬</div>
-      <h3>Email digest à 8h00</h3>
-      <p>Chaque matin, un récapitulatif des nouvelles opportunités de la nuit directement dans votre boîte. Lisez pendant votre café.</p>
+    <div class="feat reveal reveal-delay-2">
+      <div class="feat-icon-wrap">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M5 1v4M11 1v4M2 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </div>
+      <h3>Email digest quotidien</h3>
+      <p>Chaque matin, un récapitulatif des nouvelles opportunités directement dans votre boîte. Lisez pendant votre café.</p>
     </div>
-    <div class="feat">
-      <div class="feat-icon">⚡</div>
+    <div class="feat reveal reveal-delay-3">
+      <div class="feat-icon-wrap">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </div>
       <h3>Scan instantané</h3>
-      <p>Pas envie d'attendre demain matin ? Lancez un scan manuel depuis le dashboard. Résultats en 2 minutes.</p>
+      <p>Pas envie d'attendre ? Lancez un scan manuel depuis le dashboard. Résultats disponibles en moins de 2 minutes.</p>
     </div>
-    <div class="feat">
-      <div class="feat-icon">🎯</div>
-      <h3>Alertes illimitées</h3>
-      <p>Berlines, SUV, utilitaires, sportives — créez une alerte par segment. Aucune restriction.</p>
+    <div class="feat reveal reveal-delay-1">
+      <div class="feat-icon-wrap">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2l1.8 3.6L14 6.3l-3 2.9.7 4.1L8 11.3l-3.7 1.9.7-4.1-3-2.9 4.2-.7L8 2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+      </div>
+      <h3>Alertes multi-critères</h3>
+      <p>Berlines, SUV, utilitaires, sportives — créez une alerte par segment avec des filtres précis sur chaque modèle.</p>
     </div>
-    <div class="feat">
-      <div class="feat-icon">🌐</div>
+    <div class="feat reveal reveal-delay-2">
+      <div class="feat-icon-wrap">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="6" cy="6" r="4" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="10" r="4" stroke="currentColor" stroke-width="1.5"/></svg>
+      </div>
       <h3>3 plateformes couvertes</h3>
-      <p>La Centrale, AutoScout24 et LeBonCoin simultanément. Fini de jongler entre les onglets.</p>
+      <p>La Centrale, AutoScout24 et LeBonCoin simultanément. Fini de jongler entre les onglets toute la journée.</p>
     </div>
-    <div class="feat">
-      <div class="feat-icon">💾</div>
+    <div class="feat reveal reveal-delay-3">
+      <div class="feat-icon-wrap">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M5 8h6M5 5.5h4M5 10.5h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </div>
       <h3>Historique complet</h3>
-      <p>Tous les véhicules trouvés depuis votre inscription, accessibles à tout moment depuis le dashboard.</p>
+      <p>Tous les véhicules trouvés depuis votre inscription, accessibles à tout moment. Favoris et masquage inclus.</p>
     </div>
   </div>
 </section>
 
 <!-- PRICING -->
-<section class="pricing-section" id="pricing">
-  <div class="section-label">Tarifs</div>
-  <h2>Simple. Transparent.</h2>
-  <p class="sub">14 jours d'essai gratuit — aucune carte de crédit requise.</p>
+<section class="section" id="pricing">
+  <div class="section-label reveal">Tarifs</div>
+  <h2 class="section-h2 reveal reveal-delay-1">Simple. Transparent.<br>Sans engagement.</h2>
+  <p class="section-sub reveal reveal-delay-2">14 jours d'essai gratuit sur tous les plans. Aucune carte de crédit requise.</p>
   <div class="plans">
-    <div class="plan">
-      <div class="plan-tier">Essai gratuit</div>
-      <div class="plan-price"><sup>€</sup>0<sub>/14 jours</sub></div>
-      <div class="plan-desc">Pour tester sans engagement.</div>
+    <div class="plan reveal reveal-delay-1">
+      <div class="plan-tier">Starter</div>
+      <div class="plan-price"><sup>€</sup>19<sub>/mois</sub></div>
+      <p class="plan-desc">Pour les garages qui démarrent leur veille VO.</p>
+      <div class="plan-divider"></div>
       <ul class="plan-list">
-        <li>Alertes illimitées</li>
-        <li>Scan quotidien automatique</li>
+        <li>5 alertes simultanées</li>
+        <li>1 scan par jour à 8h</li>
         <li>Email digest quotidien</li>
-        <li>3 plateformes</li>
+        <li>3 sources (LBC, AS24, LC)</li>
+        <li>Historique 30 jours</li>
+        <li class="off">Scan manuel</li>
+        <li class="off">Export CSV</li>
+        <li class="off">Support prioritaire</li>
       </ul>
       <a href="/register" class="plan-btn secondary">Commencer gratuitement</a>
     </div>
-    <div class="plan featured">
-      <div class="plan-tag">Le plus populaire</div>
+    <div class="plan featured reveal reveal-delay-2">
       <div class="plan-tier">Pro</div>
-      <div class="plan-price"><sup>€</sup>29<sub>/mois</sub></div>
-      <div class="plan-desc">Pour les garages VO actifs.</div>
+      <div class="plan-price"><sup>€</sup>49<sub>/mois</sub></div>
+      <p class="plan-desc">Pour les garages actifs qui veulent prendre de l'avance.</p>
+      <div class="plan-divider"></div>
       <ul class="plan-list">
-        <li>Tout l'essai gratuit</li>
-        <li>Scans instantanés illimités</li>
-        <li>Historique complet</li>
-        <li>Support prioritaire</li>
+        <li>15 alertes simultanées</li>
+        <li>2 scans par jour (8h + 14h)</li>
+        <li>Email digest quotidien</li>
+        <li>3 sources (LBC, AS24, LC)</li>
+        <li>Historique illimité</li>
+        <li>Scan manuel illimité</li>
+        <li>Export CSV</li>
+        <li class="off">Support prioritaire</li>
       </ul>
-      <a href="/register" class="plan-btn primary">Démarrer l'essai →</a>
+      <a href="/register" class="plan-btn primary">Démarrer l'essai gratuit →</a>
+    </div>
+    <div class="plan reveal reveal-delay-3">
+      <div class="plan-tier">Agence</div>
+      <div class="plan-price"><sup>€</sup>129<sub>/mois</sub></div>
+      <p class="plan-desc">Pour les négociants et buying centers à fort volume.</p>
+      <div class="plan-divider"></div>
+      <ul class="plan-list">
+        <li>Alertes illimitées</li>
+        <li>4 scans par jour</li>
+        <li>Email digest quotidien</li>
+        <li>3 sources (LBC, AS24, LC)</li>
+        <li>Historique illimité</li>
+        <li>Scan manuel illimité</li>
+        <li>Export CSV</li>
+        <li>Support WhatsApp dédié</li>
+      </ul>
+      <a href="/register" class="plan-btn secondary">Contacter l'équipe</a>
     </div>
   </div>
 </section>
 
 <!-- CTA -->
-<section class="cta">
-  <div class="cta-glow"></div>
-  <h2>Prêt à prendre de l'avance ?</h2>
-  <p>14 jours gratuits. Aucune carte. Premiers résultats dès le premier scan.</p>
-  <a href="/register" class="btn-orange">Créer mon compte gratuitement →</a>
+<section class="cta-section">
+  <div class="cta-bg"></div>
+  <h2 class="reveal">Prêt à prendre<br>de l'avance ?</h2>
+  <p class="reveal reveal-delay-1">14 jours gratuits. Aucune carte. Premiers résultats dès le premier scan.</p>
+  <a href="/register" class="btn-primary reveal reveal-delay-2" style="display:inline-flex;margin:0 auto">
+    Créer mon compte gratuitement
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7h10M7 2l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </a>
+  <p class="cta-note reveal reveal-delay-3">Aucun engagement · Résiliation en 1 clic · Support par email</p>
 </section>
 
 <footer>
-  <div class="logo">Rate<span>Radar</span></div>
+  <div class="footer-logo">Rate<span>Radar</span></div>
   <p>© 2025 RateRadar — Surveillance VO automatisée</p>
   <a href="mailto:contact@rateradar.fr">contact@rateradar.fr</a>
 </footer>
 
+<script>
+// Scroll reveal
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+      observer.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// Nav scroll effect
+window.addEventListener('scroll', () => {
+  document.querySelector('nav').style.background =
+    window.scrollY > 40 ? 'rgba(8,8,8,.95)' : 'rgba(8,8,8,.8)';
+}, { passive: true });
+
+// Smooth anchor scroll
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', e => {
+    e.preventDefault();
+    const el = document.querySelector(a.getAttribute('href'));
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+});
+</script>
 </body>
 </html>
