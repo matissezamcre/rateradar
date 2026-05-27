@@ -769,6 +769,29 @@ def scrape_largus(alert: dict) -> list:
     return results
 
 
+# ── Filtre pertinence ──────────────────────────────────────────────────────────
+
+def _is_relevant(v: dict, alert: dict) -> bool:
+    title = v.get("title", "").lower()
+    brand = alert.get("brand", "").lower().strip()
+    model = alert.get("model", "").lower().strip()
+
+    # La marque doit apparaître dans le titre
+    if brand and brand.split()[0] not in title:
+        return False
+
+    # Si le modèle contient un numéro (ex: "3" dans "Serie 3"),
+    # vérifier qu'un numéro de série cohérent apparaît dans le titre
+    model_num = re.search(r'\b(\d+)\b', model)
+    if model_num:
+        n = model_num.group(1)
+        # Accepte : "3", "320", "318d", "330e", "3er", "serie 3" etc.
+        if not re.search(rf'\b{n}\d*\b|\b\d*{re.escape(n)}\b', title):
+            return False
+
+    return True
+
+
 # ── Runner ─────────────────────────────────────────────────────────────────────
 
 def run_alert(alert: dict) -> list:
@@ -783,7 +806,7 @@ def run_alert(alert: dict) -> list:
 
     seen, unique = set(), []
     for v in all_results:
-        if v["url"] not in seen:
+        if v["url"] not in seen and _is_relevant(v, alert):
             seen.add(v["url"])
             unique.append(v)
 
