@@ -448,7 +448,13 @@ async def scrape_debug(brand: str = "BMW", model: str = "Serie 3", user: dict = 
                     if isinstance(val, dict):
                         listings_sample = {"key": k, "sub_keys": list(val.keys())[:10]}
                     elif isinstance(val, list):
-                        listings_sample = {"key": k, "count": len(val), "first_keys": list(val[0].keys())[:10] if val else []}
+                        first = val[0] if val else {}
+                        listings_sample = {
+                            "key": k,
+                            "count": len(val),
+                            "first_keys": list(first.keys())[:15] if first else [],
+                            "raw_first": first,  # dump complet de la 1ère annonce
+                        }
                     break
             as24_nd_info = {"pageProps_keys": nd_keys, "listings_found": listings_sample}
         else:
