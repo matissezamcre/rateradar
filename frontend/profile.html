@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RateRadar — Mon profil</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0d0d0d;--surface:#141414;--surface2:#191919;--border:#232323;--orange:#ff6b1a;--orange-dim:rgba(255,107,26,.1);--orange-border:rgba(255,107,26,.25);--text:#f0ede8;--muted:#666;--green:#22c55e;--red:#ef4444}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;display:flex;align-items:center;height:52px;gap:12px}
+.logo{font-size:17px;font-weight:900;letter-spacing:-.4px;margin-right:auto;color:#fff;text-decoration:none}
+.logo span{color:var(--orange)}
+.nav-link{color:var(--muted);font-size:12px;text-decoration:none;padding:5px 10px;border-radius:5px;transition:all .15s}
+.nav-link:hover{background:var(--surface2);color:var(--text)}
+.page{max-width:680px;margin:0 auto;padding:32px 20px}
+.page-title{font-size:24px;font-weight:900;letter-spacing:-.5px;margin-bottom:28px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:16px}
+.card-head{padding:16px 20px;border-bottom:1px solid var(--border);font-size:13px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:space-between}
+.card-body{padding:20px}
+label{display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+input{width:100%;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:13px;font-family:'Inter',sans-serif;transition:border-color .15s;margin-bottom:14px}
+input:focus{outline:none;border-color:var(--orange-border)}
+.btn-primary{background:var(--orange);color:#fff;font-weight:700;font-size:13px;border:none;border-radius:7px;padding:9px 20px;cursor:pointer;font-family:'Inter',sans-serif;transition:filter .15s}
+.btn-primary:hover{filter:brightness(1.1)}
+.btn-secondary{background:transparent;color:var(--text);font-weight:600;font-size:13px;border:1px solid var(--border);border-radius:7px;padding:9px 20px;cursor:pointer;font-family:'Inter',sans-serif;transition:all .15s}
+.btn-secondary:hover{border-color:#555}
+.status-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)}
+.status-row:last-child{border-bottom:none;padding-bottom:0}
+.status-key{font-size:13px;color:var(--muted)}
+.status-val{font-size:13px;font-weight:600;color:#fff}
+.badge-pro{background:linear-gradient(135deg,#ff6b1a,#ff9a5c);color:#fff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:4px}
+.badge-trial{background:var(--orange-dim);border:1px solid var(--orange-border);color:var(--orange);font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px}
+.badge-inactive{background:#2a2a2a;color:var(--muted);font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px}
+.manage-btn{background:transparent;color:var(--orange);font-size:12px;font-weight:700;border:1px solid var(--orange-border);border-radius:5px;padding:5px 12px;cursor:pointer;font-family:'Inter',sans-serif;text-decoration:none;display:inline-block;transition:background .15s}
+.manage-btn:hover{background:var(--orange-dim)}
+.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.stat-item{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:16px;text-align:center}
+.stat-item-val{font-size:24px;font-weight:900;color:var(--orange);letter-spacing:-1px}
+.stat-item-label{font-size:11px;color:var(--muted);margin-top:3px}
+.msg{border-radius:7px;padding:10px 14px;font-size:12px;margin-bottom:14px;display:none}
+.msg.ok{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:var(--green)}
+.msg.err{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:var(--red)}
+.danger-btn{background:transparent;color:var(--red);font-weight:600;font-size:12px;border:1px solid rgba(239,68,68,.3);border-radius:6px;padding:7px 14px;cursor:pointer;font-family:'Inter',sans-serif;transition:all .15s}
+.danger-btn:hover{background:rgba(239,68,68,.1)}
+</style>
+</head>
+<body>
+<nav>
+  <a href="/dashboard" class="logo">Rate<span>Radar</span></a>
+  <a href="/dashboard" class="nav-link">← Dashboard</a>
+  <a href="/logout" class="nav-link">Déconnexion</a>
+</nav>
+
+<div class="page">
+  <div class="page-title">Mon profil</div>
+
+  <!-- STATS -->
+  <div class="card">
+    <div class="card-head">Statistiques</div>
+    <div class="card-body">
+      <div class="stat-grid">
+        <div class="stat-item"><div class="stat-item-val" id="st-vehicles">—</div><div class="stat-item-label">Véhicules trouvés</div></div>
+        <div class="stat-item"><div class="stat-item-val" id="st-alerts">—</div><div class="stat-item-label">Alertes créées</div></div>
+        <div class="stat-item"><div class="stat-item-val" id="st-days">—</div><div class="stat-item-label">Jours membre</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ABONNEMENT -->
+  <div class="card">
+    <div class="card-head">Abonnement</div>
+    <div class="card-body">
+      <div class="status-row">
+        <span class="status-key">Statut</span>
+        <span id="sub-status"></span>
+      </div>
+      <div class="status-row">
+        <span class="status-key">Email</span>
+        <span class="status-val" id="sub-email">—</span>
+      </div>
+      <div class="status-row" id="portal-row" style="display:none">
+        <span class="status-key">Gérer l'abonnement</span>
+        <a href="/stripe-portal" class="manage-btn">Portail Stripe →</a>
+      </div>
+      <div class="status-row" id="upgrade-row" style="display:none">
+        <span class="status-key">Passer Pro</span>
+        <a href="/subscribe" class="manage-btn">Activer Pro →</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- INFOS -->
+  <div class="card">
+    <div class="card-head">Informations</div>
+    <div class="card-body">
+      <div class="msg" id="info-msg"></div>
+      <label>Nom du garage</label>
+      <input type="text" id="garage-name" placeholder="Garage Dupont VO">
+      <label>Email</label>
+      <input type="email" id="email">
+      <button class="btn-primary" onclick="saveProfile()">Enregistrer</button>
+    </div>
+  </div>
+
+  <!-- MOT DE PASSE -->
+  <div class="card">
+    <div class="card-head">Mot de passe</div>
+    <div class="card-body">
+      <div class="msg" id="pwd-msg"></div>
+      <label>Mot de passe actuel</label>
+      <input type="password" id="pwd-current" placeholder="••••••••">
+      <label>Nouveau mot de passe</label>
+      <input type="password" id="pwd-new" placeholder="Minimum 8 caractères">
+      <button class="btn-primary" onclick="changePassword()">Changer le mot de passe</button>
+    </div>
+  </div>
+
+  <!-- DANGER -->
+  <div class="card">
+    <div class="card-head" style="color:var(--red)">Zone dangereuse</div>
+    <div class="card-body" style="display:flex;align-items:center;justify-content:space-between">
+      <span style="font-size:13px;color:var(--muted)">Se déconnecter de tous les appareils</span>
+      <a href="/logout" class="danger-btn">Déconnexion</a>
+    </div>
+  </div>
+</div>
+
+<script>
+async function init() {
+  const r = await fetch('/me');
+  if (r.status === 401) { window.location = '/login'; return; }
+  const me = await r.json();
+
+  document.getElementById('garage-name').value = me.garage_name || '';
+  document.getElementById('email').value = me.email || '';
+  document.getElementById('sub-email').textContent = me.email;
+
+  const statusEl = document.getElementById('sub-status');
+  if (me.subscription_status === 'active') {
+    statusEl.innerHTML = '<span class="badge-pro">PRO</span>';
+    document.getElementById('portal-row').style.display = '';
+  } else if (me.trial_days_left > 0) {
+    statusEl.innerHTML = `<span class="badge-trial">Essai — ${me.trial_days_left}j restants</span>`;
+    document.getElementById('upgrade-row').style.display = '';
+  } else {
+    statusEl.innerHTML = '<span class="badge-inactive">Expiré</span>';
+    document.getElementById('upgrade-row').style.display = '';
+  }
+
+  const [alertsR, vehiclesR] = await Promise.all([fetch('/alerts'), fetch('/vehicles')]);
+  const alerts = await alertsR.json();
+  const vehicles = await vehiclesR.json();
+  document.getElementById('st-alerts').textContent = alerts.length;
+  document.getElementById('st-vehicles').textContent = vehicles.length;
+  try {
+    const created = new Date(me.created_at);
+    const days = Math.floor((Date.now() - created.getTime()) / 86400000);
+    document.getElementById('st-days').textContent = days;
+  } catch { document.getElementById('st-days').textContent = '—'; }
+}
+
+async function saveProfile() {
+  const r = await fetch('/profile/update', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      garage_name: document.getElementById('garage-name').value,
+      email: document.getElementById('email').value,
+    })
+  });
+  const d = await r.json();
+  const msg = document.getElementById('info-msg');
+  msg.style.display = 'block';
+  if (d.ok) { msg.className = 'msg ok'; msg.textContent = 'Profil mis à jour !'; }
+  else { msg.className = 'msg err'; msg.textContent = d.error || 'Erreur'; }
+}
+
+async function changePassword() {
+  const current = document.getElementById('pwd-current').value;
+  const newPwd = document.getElementById('pwd-new').value;
+  if (newPwd.length < 8) { showPwdMsg('err', 'Minimum 8 caractères'); return; }
+  const r = await fetch('/profile/password', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({current, new: newPwd})
+  });
+  const d = await r.json();
+  if (d.ok) {
+    showPwdMsg('ok', 'Mot de passe mis à jour !');
+    document.getElementById('pwd-current').value = '';
+    document.getElementById('pwd-new').value = '';
+  } else {
+    showPwdMsg('err', d.error || 'Erreur');
+  }
+}
+
+function showPwdMsg(type, text) {
+  const msg = document.getElementById('pwd-msg');
+  msg.className = 'msg ' + type;
+  msg.textContent = text;
+  msg.style.display = 'block';
+}
+
+init();
+</script>
+</body>
+</html>

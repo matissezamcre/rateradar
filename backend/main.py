@@ -22,18 +22,26 @@ try:
         init_db, create_user, get_user_by_email, get_user_by_id,
         update_subscription, update_subscription_by_customer,
         set_reset_token, get_user_by_reset_token, update_password,
-        create_alert, get_alerts, delete_alert, toggle_alert,
+        create_alert, get_alerts, delete_alert, toggle_alert, update_alert, update_alert_last_scan,
         get_all_active_alerts, save_vehicle, get_vehicles,
         get_unsent_vehicles, mark_vehicles_sent, get_all_users_with_alerts,
+        toggle_vehicle_favorite, hide_vehicle,
+        get_vehicle_stats_daily, get_best_vehicle_today,
+        create_notification, get_notifications, mark_notifications_read, get_unread_count,
+        update_profile,
     )
 except ModuleNotFoundError:
     from backend.db import (
         init_db, create_user, get_user_by_email, get_user_by_id,
         update_subscription, update_subscription_by_customer,
         set_reset_token, get_user_by_reset_token, update_password,
-        create_alert, get_alerts, delete_alert, toggle_alert,
+        create_alert, get_alerts, delete_alert, toggle_alert, update_alert, update_alert_last_scan,
         get_all_active_alerts, save_vehicle, get_vehicles,
         get_unsent_vehicles, mark_vehicles_sent, get_all_users_with_alerts,
+        toggle_vehicle_favorite, hide_vehicle,
+        get_vehicle_stats_daily, get_best_vehicle_today,
+        create_notification, get_notifications, mark_notifications_read, get_unread_count,
+        update_profile,
     )
 
 load_dotenv()
@@ -41,21 +49,21 @@ load_dotenv()
 BASE_DIR     = Path(__file__).parent
 FRONTEND_DIR = BASE_DIR.parent / "frontend"
 SECRET_KEY   = os.getenv("SECRET_KEY", "change-me")
+APP_URL      = os.getenv("APP_URL", "http://localhost:8000")
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
 
 pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 scheduler = AsyncIOScheduler()
 
 
 async def run_daily_scrape():
-    """Runs all active alerts and sends email digests."""
     from scripts.scraper import run_alert
     import sys
     sys.path.insert(0, str(BASE_DIR.parent))
 
     alerts = get_all_active_alerts()
     print(f"[Scraper] Running {len(alerts)} alerts...")
+    new_by_user = {}
     for alert in alerts:
         try:
             vehicles = run_alert(alert)
@@ -63,9 +71,18 @@ async def run_daily_scrape():
             for v in vehicles:
                 if save_vehicle(v):
                     new += 1
+                    uid = v['user_id']
+                    new_by_user[uid] = new_by_user.get(uid, 0) + 1
+            update_alert_last_scan(alert['id'])
             print(f"  Alert {alert['id'][:8]}: {new} new vehicles")
         except Exception as e:
             print(f"  Error alert {alert['id'][:8]}: {e}")
+
+    for uid, count in new_by_user.items():
+        try:
+            create_notification(uid, f"🚗 {count} nouveau(x) véhicule(s) trouvé(s) aujourd'hui")
+        except Exception:
+            pass
 
     users = get_all_users_with_alerts()
     for user in users:
@@ -89,7 +106,7 @@ def send_digest_email(to_email: str, garage_name: str, vehicles: list):
     for v in vehicles[:10]:
         lines.append(f"• {v['title']} — {v['price']:,}€ — {v['km']:,} km — {v['location']}")
         lines.append(f"  → {v['url']}\n")
-    lines.append("\nBonne chasse !\nL'équipe RateRadar\nhttps://rateradar.onrender.com")
+    lines.append(f"\nBonne chasse !\nL'équipe RateRadar\n{APP_URL}")
 
     msg = MIMEMultipart()
     msg["From"] = f"RateRadar <{gmail_user}>"
@@ -197,8 +214,7 @@ async def forgot_password(email: str = Form(...)):
     token = secrets.token_urlsafe(32)
     expiry = datetime.now(timezone.utc).replace(tzinfo=None) + dt.timedelta(hours=1)
     set_reset_token(user["id"], token, expiry)
-    app_url = os.getenv("APP_URL", "http://localhost:8000")
-    return JSONResponse({"reset_url": f"{app_url}/reset-password?token={token}"})
+    return JSONResponse({"reset_url": f"{APP_URL}/reset-password?token={token}"})
 
 @app.get("/reset-password")
 def reset_password_page():
@@ -221,6 +237,13 @@ def dashboard(request: Request):
         return RedirectResponse("/login")
     return html("dashboard.html")
 
+@app.get("/profile")
+def profile_page(request: Request):
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse("/login")
+    return html("profile.html")
+
 @app.get("/me")
 def me(request: Request):
     user = get_current_user(request)
@@ -231,6 +254,7 @@ def me(request: Request):
         days_left = max(0, 14 - (datetime.now(timezone.utc) - created).days)
     except Exception:
         days_left = 14
+    unread = get_unread_count(user["id"])
     return {
         "id": user["id"],
         "email": user["email"],
@@ -238,7 +262,27 @@ def me(request: Request):
         "subscription_status": user.get("subscription_status", "trial"),
         "trial_days_left": days_left,
         "can_use": user_can_use(user),
+        "unread_notifications": unread,
+        "created_at": str(user.get("created_at", "")),
     }
+
+@app.post("/profile/update")
+async def profile_update(request: Request, user: dict = Depends(require_user)):
+    data = await request.json()
+    garage_name = data.get("garage_name", user.get("garage_name", ""))
+    email = data.get("email", user["email"])
+    if email != user["email"] and get_user_by_email(email):
+        return JSONResponse({"error": "Email déjà utilisé"}, status_code=400)
+    update_profile(user["id"], garage_name, email)
+    return {"ok": True}
+
+@app.post("/profile/password")
+async def profile_password(request: Request, user: dict = Depends(require_user)):
+    data = await request.json()
+    if not pwd_ctx.verify(data.get("current", ""), user["password_hash"]):
+        return JSONResponse({"error": "Mot de passe actuel incorrect"}, status_code=400)
+    update_password(user["id"], pwd_ctx.hash(data.get("new", "")))
+    return {"ok": True}
 
 # ── Alerts API ─────────────────────────────────────────────────────────────────
 
@@ -260,6 +304,8 @@ def alerts_list(user: dict = Depends(require_user)):
     for a in alerts:
         if a.get("created_at"):
             a["created_at"] = str(a["created_at"])
+        if a.get("last_scan"):
+            a["last_scan"] = str(a["last_scan"])
     return alerts
 
 @app.post("/alerts")
@@ -268,6 +314,12 @@ def alert_create(req: AlertCreate, user: dict = Depends(require_user)):
         raise HTTPException(status_code=402, detail="trial_expired")
     aid = create_alert(user["id"], req.dict())
     return {"id": aid}
+
+@app.put("/alerts/{alert_id}")
+async def alert_update(alert_id: str, request: Request, user: dict = Depends(require_user)):
+    data = await request.json()
+    update_alert(alert_id, user["id"], data)
+    return {"ok": True}
 
 @app.delete("/alerts/{alert_id}")
 def alert_delete(alert_id: str, user: dict = Depends(require_user)):
@@ -286,12 +338,43 @@ def alert_toggle(alert_id: str, user: dict = Depends(require_user)):
 # ── Vehicles API ───────────────────────────────────────────────────────────────
 
 @app.get("/vehicles")
-def vehicles_list(request: Request, alert_id: Optional[str] = None, user: dict = Depends(require_user)):
-    vehicles = get_vehicles(user["id"], alert_id)
+def vehicles_list(
+    request: Request,
+    alert_id: Optional[str] = None,
+    source: Optional[str] = None,
+    min_score: int = 0,
+    sort: str = "score",
+    favorites: bool = False,
+    user: dict = Depends(require_user)
+):
+    vehicles = get_vehicles(user["id"], alert_id, source=source, min_score=min_score,
+                            sort=sort, favorites_only=favorites)
     for v in vehicles:
         if v.get("found_at"):
             v["found_at"] = str(v["found_at"])
     return vehicles
+
+@app.patch("/vehicles/{vehicle_id}/favorite")
+def vehicle_favorite(vehicle_id: str, user: dict = Depends(require_user)):
+    state = toggle_vehicle_favorite(vehicle_id, user["id"])
+    return {"favorited": state}
+
+@app.patch("/vehicles/{vehicle_id}/hide")
+def vehicle_hide(vehicle_id: str, user: dict = Depends(require_user)):
+    hide_vehicle(vehicle_id, user["id"])
+    return {"ok": True}
+
+@app.get("/stats/daily")
+def stats_daily(user: dict = Depends(require_user)):
+    rows = get_vehicle_stats_daily(user["id"])
+    return [{"date": str(r["date"]), "count": r["count"]} for r in rows]
+
+@app.get("/stats/best-today")
+def best_today(user: dict = Depends(require_user)):
+    v = get_best_vehicle_today(user["id"])
+    if v and v.get("found_at"):
+        v["found_at"] = str(v["found_at"])
+    return v or {}
 
 @app.post("/scrape/run")
 async def scrape_run(user: dict = Depends(require_user)):
@@ -307,10 +390,39 @@ async def scrape_run(user: dict = Depends(require_user)):
     total = 0
     for alert in active:
         vehicles = run_alert(alert)
+        new = 0
         for v in vehicles:
             if save_vehicle(v):
                 total += 1
+                new += 1
+        update_alert_last_scan(alert['id'])
+    if total > 0:
+        create_notification(user["id"], f"⚡ Scan manuel : {total} nouveau(x) véhicule(s) trouvé(s)")
     return {"found": total}
+
+@app.post("/digest/now")
+async def digest_now(user: dict = Depends(require_user)):
+    unsent = get_unsent_vehicles(user["id"])
+    if not unsent:
+        return {"sent": 0, "message": "Aucun nouveau véhicule à envoyer"}
+    try:
+        send_digest_email(user["email"], user.get("garage_name", ""), unsent)
+        mark_vehicles_sent(user["id"])
+        return {"sent": len(unsent)}
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+# ── Notifications ──────────────────────────────────────────────────────────────
+
+@app.get("/notifications")
+def notifications_list(user: dict = Depends(require_user)):
+    notifs = get_notifications(user["id"])
+    return [{"id": n["id"], "message": n["message"], "read": n["read"], "created_at": str(n["created_at"])} for n in notifs]
+
+@app.post("/notifications/read")
+def notifications_read(user: dict = Depends(require_user)):
+    mark_notifications_read(user["id"])
+    return {"ok": True}
 
 # ── Stripe ─────────────────────────────────────────────────────────────────────
 
@@ -329,12 +441,29 @@ async def subscribe(request: Request):
             line_items=[{"price": price_id, "quantity": 1}],
             customer_email=user["email"],
             metadata={"user_id": user["id"]},
-            success_url=os.getenv("APP_URL", "http://localhost:8000") + "/dashboard?subscribed=1",
-            cancel_url=os.getenv("APP_URL", "http://localhost:8000") + "/dashboard",
+            success_url=APP_URL + "/dashboard?subscribed=1",
+            cancel_url=APP_URL + "/dashboard",
         )
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
     return RedirectResponse(session.url, status_code=303)
+
+@app.get("/stripe-portal")
+async def stripe_portal(request: Request):
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse("/login")
+    customer_id = user.get("stripe_customer_id")
+    if not customer_id:
+        return RedirectResponse("/dashboard")
+    try:
+        session = stripe.billing_portal.Session.create(
+            customer=customer_id,
+            return_url=APP_URL + "/profile",
+        )
+        return RedirectResponse(session.url, status_code=303)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 @app.post("/stripe-webhook")
 async def stripe_webhook(request: Request):
@@ -349,6 +478,7 @@ async def stripe_webhook(request: Request):
         customer_id = event["data"]["object"].get("customer")
         if user_id:
             update_subscription(user_id, "active", customer_id)
+            create_notification(user_id, "🎉 Abonnement Pro activé ! Bienvenue dans RateRadar Pro.")
     elif event["type"] in ("customer.subscription.deleted", "customer.subscription.paused"):
         customer_id = event["data"]["object"].get("customer")
         if customer_id:

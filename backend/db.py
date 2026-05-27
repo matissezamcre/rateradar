@@ -55,6 +55,7 @@ def init_db():
                     region TEXT DEFAULT 'France',
                     frequency TEXT DEFAULT 'daily',
                     active BOOLEAN DEFAULT TRUE,
+                    last_scan TIMESTAMP,
                     created_at TIMESTAMP DEFAULT NOW()
                 )
             """)
@@ -75,9 +76,33 @@ def init_db():
                     image_url TEXT DEFAULT '',
                     score INTEGER DEFAULT 0,
                     sent BOOLEAN DEFAULT FALSE,
+                    favorited BOOLEAN DEFAULT FALSE,
+                    hidden BOOLEAN DEFAULT FALSE,
                     found_at TIMESTAMP DEFAULT NOW()
                 )
             """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS notifications (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    message TEXT NOT NULL,
+                    read BOOLEAN DEFAULT FALSE,
+                    created_at TIMESTAMP DEFAULT NOW()
+                )
+            """)
+            # Migrations for existing tables
+            for col, definition in [
+                ("last_scan", "TIMESTAMP"),
+                ("favorited", "BOOLEAN DEFAULT FALSE"),
+                ("hidden", "BOOLEAN DEFAULT FALSE"),
+            ]:
+                try:
+                    if col in ("favorited", "hidden"):
+                        cur.execute(f"ALTER TABLE vehicles ADD COLUMN IF NOT EXISTS {col} {definition}")
+                    else:
+                        cur.execute(f"ALTER TABLE alerts ADD COLUMN IF NOT EXISTS {col} {definition}")
+                except Exception:
+                    pass
         conn.commit()
 
 
@@ -147,6 +172,13 @@ def update_password(user_id: str, password_hash: str):
         conn.commit()
 
 
+def update_profile(user_id: str, garage_name: str, email: str):
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE users SET garage_name=%s, email=%s WHERE id=%s", (garage_name, email, user_id))
+        conn.commit()
+
+
 # ── Alerts ─────────────────────────────────────────────────────────────────────
 
 def create_alert(user_id: str, data: dict) -> str:
@@ -167,7 +199,14 @@ def create_alert(user_id: str, data: dict) -> str:
 def get_alerts(user_id: str) -> list:
     with get_conn() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT * FROM alerts WHERE user_id=%s ORDER BY created_at DESC", (user_id,))
+            cur.execute("""
+                SELECT a.*, COUNT(v.id) as vehicle_count
+                FROM alerts a
+                LEFT JOIN vehicles v ON v.alert_id = a.id AND v.hidden = FALSE
+                WHERE a.user_id = %s
+                GROUP BY a.id
+                ORDER BY a.created_at DESC
+            """, (user_id,))
             return _rows(cur)
 
 
@@ -192,6 +231,26 @@ def toggle_alert(alert_id: str, user_id: str, active: bool):
         conn.commit()
 
 
+def update_alert(alert_id: str, user_id: str, data: dict):
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                UPDATE alerts SET name=%s, brand=%s, model=%s, price_max=%s, km_max=%s, year_min=%s, fuel=%s, frequency=%s
+                WHERE id=%s AND user_id=%s
+            """, (data.get('name',''), data.get('brand',''), data.get('model',''),
+                  data.get('price_max', 50000), data.get('km_max', 200000),
+                  data.get('year_min', 2010), data.get('fuel',''), data.get('frequency','daily'),
+                  alert_id, user_id))
+        conn.commit()
+
+
+def update_alert_last_scan(alert_id: str):
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE alerts SET last_scan=NOW() WHERE id=%s", (alert_id,))
+        conn.commit()
+
+
 # ── Vehicles ───────────────────────────────────────────────────────────────────
 
 def save_vehicle(data: dict) -> bool:
@@ -213,20 +272,57 @@ def save_vehicle(data: dict) -> bool:
                 return False
 
 
-def get_vehicles(user_id: str, alert_id: str = None, limit: int = 50) -> list:
+def get_vehicles(user_id: str, alert_id: str = None, limit: int = 100,
+                 source: str = None, min_score: int = 0,
+                 sort: str = 'score', favorites_only: bool = False) -> list:
     with get_conn() as conn:
         with conn.cursor() as cur:
+            conditions = ["user_id=%s", "hidden=FALSE"]
+            params = [user_id]
             if alert_id:
-                cur.execute("SELECT * FROM vehicles WHERE user_id=%s AND alert_id=%s ORDER BY score DESC, found_at DESC LIMIT %s", (user_id, alert_id, limit))
-            else:
-                cur.execute("SELECT * FROM vehicles WHERE user_id=%s ORDER BY score DESC, found_at DESC LIMIT %s", (user_id, limit))
+                conditions.append("alert_id=%s")
+                params.append(alert_id)
+            if source:
+                conditions.append("source=%s")
+                params.append(source)
+            if min_score:
+                conditions.append("score>=%s")
+                params.append(min_score)
+            if favorites_only:
+                conditions.append("favorited=TRUE")
+            order = {
+                'score': 'score DESC, found_at DESC',
+                'price_asc': 'price ASC',
+                'price_desc': 'price DESC',
+                'km': 'km ASC',
+                'date': 'found_at DESC',
+            }.get(sort, 'score DESC, found_at DESC')
+            where = " AND ".join(conditions)
+            params.append(limit)
+            cur.execute(f"SELECT * FROM vehicles WHERE {where} ORDER BY {order} LIMIT %s", params)
             return _rows(cur)
+
+
+def toggle_vehicle_favorite(vehicle_id: str, user_id: str) -> bool:
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE vehicles SET favorited = NOT favorited WHERE id=%s AND user_id=%s RETURNING favorited", (vehicle_id, user_id))
+            row = cur.fetchone()
+            conn.commit()
+            return row[0] if row else False
+
+
+def hide_vehicle(vehicle_id: str, user_id: str):
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE vehicles SET hidden=TRUE WHERE id=%s AND user_id=%s", (vehicle_id, user_id))
+        conn.commit()
 
 
 def get_unsent_vehicles(user_id: str) -> list:
     with get_conn() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT * FROM vehicles WHERE user_id=%s AND sent=FALSE ORDER BY score DESC LIMIT 20", (user_id,))
+            cur.execute("SELECT * FROM vehicles WHERE user_id=%s AND sent=FALSE AND hidden=FALSE ORDER BY score DESC LIMIT 20", (user_id,))
             return _rows(cur)
 
 
@@ -235,6 +331,30 @@ def mark_vehicles_sent(user_id: str):
         with conn.cursor() as cur:
             cur.execute("UPDATE vehicles SET sent=TRUE WHERE user_id=%s AND sent=FALSE", (user_id,))
         conn.commit()
+
+
+def get_vehicle_stats_daily(user_id: str) -> list:
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT DATE(found_at) as date, COUNT(*) as count
+                FROM vehicles
+                WHERE user_id=%s AND found_at > NOW() - INTERVAL '14 days'
+                GROUP BY DATE(found_at)
+                ORDER BY date
+            """, (user_id,))
+            return _rows(cur)
+
+
+def get_best_vehicle_today(user_id: str):
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT * FROM vehicles
+                WHERE user_id=%s AND hidden=FALSE AND found_at > NOW() - INTERVAL '24 hours'
+                ORDER BY score DESC LIMIT 1
+            """, (user_id,))
+            return _row(cur)
 
 
 def get_all_users_with_alerts() -> list:
@@ -247,3 +367,34 @@ def get_all_users_with_alerts() -> list:
                 WHERE a.active = TRUE
             """)
             return _rows(cur)
+
+
+# ── Notifications ──────────────────────────────────────────────────────────────
+
+def create_notification(user_id: str, message: str):
+    nid = str(uuid.uuid4())
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("INSERT INTO notifications (id, user_id, message) VALUES (%s, %s, %s)", (nid, user_id, message))
+        conn.commit()
+
+
+def get_notifications(user_id: str) -> list:
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM notifications WHERE user_id=%s ORDER BY created_at DESC LIMIT 20", (user_id,))
+            return _rows(cur)
+
+
+def mark_notifications_read(user_id: str):
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE notifications SET read=TRUE WHERE user_id=%s AND read=FALSE", (user_id,))
+        conn.commit()
+
+
+def get_unread_count(user_id: str) -> int:
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) FROM notifications WHERE user_id=%s AND read=FALSE", (user_id,))
+            return cur.fetchone()[0]
