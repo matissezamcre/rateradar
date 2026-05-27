@@ -1,11 +1,14 @@
 """
-RateRadar scraper v2 — API internes + JSON embarqué
-- LeBonCoin  : API interne JSON (api.leboncoin.fr)
-- AutoScout24 : __NEXT_DATA__ JSON embarqué dans la page
-- La Centrale : __NEXT_DATA__ ou données JSON script
-Aucune dépendance payante.
+RateRadar scraper v2
+- AutoScout24 : __NEXT_DATA__ JSON (fonctionne sans proxy)
+- LeBonCoin   : API interne (nécessite SCRAPER_API_KEY pour contourner DataDome)
+- La Centrale : __NEXT_DATA__ (nécessite SCRAPER_API_KEY pour contourner Cloudflare)
+- L'Argus     : __NEXT_DATA__ JSON (source gratuite supplémentaire)
+
+Variable d'env optionnelle : SCRAPER_API_KEY (scraperapi.com — 5000 req/mois gratuit)
 """
 
+import os
 import re
 import json
 import time
@@ -13,6 +16,8 @@ import random
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import quote_plus
+
+SCRAPER_API_KEY = os.getenv("SCRAPER_API_KEY", "")
 
 # ── Headers ────────────────────────────────────────────────────────────────────
 
@@ -48,15 +53,44 @@ def _sleep():
     time.sleep(random.uniform(1.2, 2.8))
 
 
-def _get_html(url: str, headers: dict, timeout: int = 12) -> BeautifulSoup | None:
+def _proxied_get(url: str, headers: dict, timeout: int = 20) -> requests.Response | None:
+    """GET via ScraperAPI si clé disponible, sinon direct."""
     try:
         _sleep()
-        r = requests.get(url, headers=headers, timeout=timeout)
+        if SCRAPER_API_KEY:
+            proxy_url = f"http://api.scraperapi.com?api_key={SCRAPER_API_KEY}&url={quote_plus(url)}&render=false"
+            r = requests.get(proxy_url, timeout=timeout)
+        else:
+            r = requests.get(url, headers=headers, timeout=timeout)
         if r.status_code == 200:
             r.encoding = "utf-8"
-            return BeautifulSoup(r.text, "html.parser")
+            return r
     except Exception:
         pass
+    return None
+
+
+def _proxied_post(url: str, headers: dict, payload: dict, timeout: int = 20) -> requests.Response | None:
+    """POST via ScraperAPI si clé disponible, sinon direct."""
+    try:
+        _sleep()
+        if SCRAPER_API_KEY:
+            proxy_url = f"http://api.scraperapi.com?api_key={SCRAPER_API_KEY}&url={quote_plus(url)}&render=false"
+            r = requests.post(proxy_url, headers=headers, json=payload, timeout=timeout)
+        else:
+            r = requests.post(url, headers=headers, json=payload, timeout=timeout)
+        if r.status_code == 200:
+            r.encoding = "utf-8"
+            return r
+    except Exception:
+        pass
+    return None
+
+
+def _get_html(url: str, headers: dict, timeout: int = 12) -> BeautifulSoup | None:
+    r = _proxied_get(url, headers, timeout)
+    if r:
+        return BeautifulSoup(r.text, "html.parser")
     return None
 
 
@@ -632,11 +666,118 @@ def scrape_lacentrale(alert: dict) -> list:
     return results
 
 
+# ── L'Argus (annonces.largus.fr — __NEXT_DATA__) ──────────────────────────────
+
+ARGUS_HEADERS = {
+    **BASE_HEADERS,
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Referer": "https://www.largus.fr/",
+}
+
+def scrape_largus(alert: dict) -> list:
+    results = []
+    brand     = quote_plus(alert.get("brand", ""))
+    model     = quote_plus(alert.get("model", ""))
+    price_max = alert.get("price_max", 50000)
+    km_max    = alert.get("km_max", 200000)
+    year_min  = alert.get("year_min", 2010)
+
+    url = (
+        f"https://www.largus.fr/annonces-voitures/{brand.lower()}-{model.lower().replace('+', '-')}.html"
+        f"?prix_max={price_max}&km_max={km_max}&annee_min={year_min}&tri=prix_croissant"
+    )
+
+    soup = _get_html(url, ARGUS_HEADERS)
+    if not soup:
+        return results
+
+    nd = _extract_next_data(soup)
+    if nd:
+        try:
+            pp = nd.get("props", {}).get("pageProps", {})
+            ads = pp.get("ads") or pp.get("vehicles") or pp.get("listings") or []
+            if isinstance(ads, dict):
+                ads = ads.get("items") or ads.get("results") or []
+            for ad in ads[:20]:
+                try:
+                    ad_url = ad.get("url") or ad.get("link") or ""
+                    title  = ad.get("title") or f"{alert.get('brand','')} {alert.get('model','')}".strip()
+                    price  = int(re.sub(r"[^\d]", "", str(ad.get("price") or "0")) or 0)
+                    km     = int(re.sub(r"[^\d]", "", str(ad.get("mileage") or ad.get("km") or "0")) or 0)
+                    if km > 999999: km = 0
+                    yr_m   = re.search(r"(20\d{2}|19\d{2})", str(ad.get("year") or ad.get("firstRegistration") or ""))
+                    year   = int(yr_m.group(1)) if yr_m else 0
+                    location = str(ad.get("location") or ad.get("city") or ad.get("department") or "")
+                    image_url = str(ad.get("image") or ad.get("photo") or ad.get("thumbnail") or "")
+                    if not ad_url.startswith("http"):
+                        ad_url = "https://www.largus.fr" + ad_url
+                    if price == 0 or price > price_max * 1.1:
+                        continue
+                    results.append({
+                        "alert_id":  alert["id"],
+                        "user_id":   alert["user_id"],
+                        "source":    "largus",
+                        "url":       ad_url,
+                        "title":     title,
+                        "price":     price,
+                        "km":        km,
+                        "year":      year,
+                        "brand":     alert.get("brand", ""),
+                        "model":     alert.get("model", ""),
+                        "location":  location,
+                        "image_url": image_url,
+                        "score":     score_vehicle(price, km, year, price_max, km_max, year_min),
+                    })
+                except Exception:
+                    continue
+            if results:
+                return results
+        except Exception:
+            pass
+
+    # Fallback CSS
+    km_re = re.compile(r'\b(\d{1,3}(?:[\s.]\d{3})+|\d{3,6})\s*km\b', re.I)
+    year_re = re.compile(r'\b(20[01]\d|19[89]\d)\b')
+    price_re = re.compile(r'(\d[\d\s]*)\s*€')
+    for card in (soup.select(".announcement-item") or soup.select("article") or soup.select("[class*='card']"))[:20]:
+        try:
+            link = card.select_one("a[href]")
+            if not link: continue
+            href = link["href"]
+            if not href.startswith("http"): href = "https://www.largus.fr" + href
+            text = card.get_text(" ", strip=True)
+            p_m = price_re.search(text)
+            price = int(re.sub(r"\s", "", p_m.group(1))) if p_m else 0
+            if price == 0 or price > price_max * 1.1: continue
+            km_m = km_re.search(text)
+            km = int(re.sub(r"[\s.]", "", km_m.group(1))) if km_m else 0
+            if km > 999999: km = 0
+            yr_m = year_re.search(text)
+            year = int(yr_m.group(1)) if yr_m else 0
+            img = card.select_one("img")
+            image_url = img.get("src") or img.get("data-src") or "" if img else ""
+            results.append({
+                "alert_id":  alert["id"],
+                "user_id":   alert["user_id"],
+                "source":    "largus",
+                "url":       href,
+                "title":     f"{alert.get('brand','')} {alert.get('model','')}".strip(),
+                "price":     price, "km": km, "year": year,
+                "brand":     alert.get("brand", ""),
+                "model":     alert.get("model", ""),
+                "location":  "", "image_url": image_url,
+                "score":     score_vehicle(price, km, year, price_max, km_max, year_min),
+            })
+        except Exception:
+            continue
+    return results
+
+
 # ── Runner ─────────────────────────────────────────────────────────────────────
 
 def run_alert(alert: dict) -> list:
     all_results = []
-    for fn in [scrape_leboncoin, scrape_autoscout24, scrape_lacentrale]:
+    for fn in [scrape_leboncoin, scrape_autoscout24, scrape_lacentrale, scrape_largus]:
         try:
             r = fn(alert)
             print(f"    {fn.__name__}: {len(r)} résultats")
