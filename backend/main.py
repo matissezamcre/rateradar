@@ -339,6 +339,8 @@ class AlertCreate(BaseModel):
     year_min: int = 2010
     fuel: str = ""
     region: str = "France"
+    zip: str = ""
+    radius_km: int = 0
     frequency: str = "daily"
 
 @app.get("/alerts")

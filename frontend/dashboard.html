@@ -306,6 +306,19 @@ nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 16
           </select>
         </div>
       </div>
+      <div class="frow">
+        <div><label>Code postal (optionnel)</label><input type="text" name="zip" id="f-zip" placeholder="Ex: 69000, 1000, 75008"></div>
+        <div><label>Rayon max</label>
+          <select name="radius_km" id="f-radius">
+            <option value="0">Toute la région</option>
+            <option value="10">10 km</option>
+            <option value="25">25 km</option>
+            <option value="50" selected>50 km</option>
+            <option value="100">100 km</option>
+            <option value="200">200 km</option>
+          </select>
+        </div>
+      </div>
       <div class="modal-btns">
         <button type="button" class="mbtn-c" onclick="closeModal()">Annuler</button>
         <button type="submit" class="mbtn-p" id="modal-submit">Créer l'alerte →</button>
@@ -454,6 +467,8 @@ function editAlert(id) {
   document.getElementById('f-year').value = a.year_min || 2015;
   document.getElementById('f-freq').value = a.frequency || 'daily';
   document.getElementById('f-region').value = a.region || 'France';
+  document.getElementById('f-zip').value = a.zip || '';
+  document.getElementById('f-radius').value = a.radius_km || 0;
   document.getElementById('overlay').classList.add('open');
 }
 
@@ -492,6 +507,8 @@ document.getElementById('alert-form').addEventListener('submit', async e => {
     year_min: parseInt(document.getElementById('f-year').value),
     frequency: document.getElementById('f-freq').value,
     region: document.getElementById('f-region').value,
+    zip: document.getElementById('f-zip').value,
+    radius_km: parseInt(document.getElementById('f-radius').value) || 0,
   };
   let r;
   if (editingId) {

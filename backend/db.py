@@ -53,6 +53,8 @@ def init_db():
                     year_min INTEGER DEFAULT 2010,
                     fuel TEXT DEFAULT '',
                     region TEXT DEFAULT 'France',
+                    zip TEXT DEFAULT '',
+                    radius_km INTEGER DEFAULT 0,
                     frequency TEXT DEFAULT 'daily',
                     active BOOLEAN DEFAULT TRUE,
                     last_scan TIMESTAMP,
@@ -105,6 +107,11 @@ def init_db():
                     pass
             try:
                 cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS plan TEXT DEFAULT 'starter'")
+            except Exception:
+                pass
+            try:
+                cur.execute("ALTER TABLE alerts ADD COLUMN IF NOT EXISTS zip TEXT DEFAULT ''")
+                cur.execute("ALTER TABLE alerts ADD COLUMN IF NOT EXISTS radius_km INTEGER DEFAULT 0")
             except Exception:
                 pass
         conn.commit()
@@ -216,12 +223,12 @@ def create_alert(user_id: str, data: dict) -> str:
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute("""
-                INSERT INTO alerts (id, user_id, name, brand, model, price_min, price_max, km_max, year_min, fuel, region, frequency)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO alerts (id, user_id, name, brand, model, price_min, price_max, km_max, year_min, fuel, region, zip, radius_km, frequency)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (aid, user_id, data.get('name',''), data.get('brand',''), data.get('model',''),
                   data.get('price_min', 0), data.get('price_max', 50000), data.get('km_max', 200000),
                   data.get('year_min', 2010), data.get('fuel',''), data.get('region','France'),
-                  data.get('frequency','daily')))
+                  data.get('zip',''), data.get('radius_km', 0), data.get('frequency','daily')))
         conn.commit()
     return aid
 
@@ -265,11 +272,12 @@ def update_alert(alert_id: str, user_id: str, data: dict):
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute("""
-                UPDATE alerts SET name=%s, brand=%s, model=%s, price_max=%s, km_max=%s, year_min=%s, fuel=%s, frequency=%s
+                UPDATE alerts SET name=%s, brand=%s, model=%s, price_max=%s, km_max=%s, year_min=%s, fuel=%s, region=%s, zip=%s, radius_km=%s, frequency=%s
                 WHERE id=%s AND user_id=%s
             """, (data.get('name',''), data.get('brand',''), data.get('model',''),
                   data.get('price_max', 50000), data.get('km_max', 200000),
-                  data.get('year_min', 2010), data.get('fuel',''), data.get('frequency','daily'),
+                  data.get('year_min', 2010), data.get('fuel',''), data.get('region','France'),
+                  data.get('zip',''), data.get('radius_km', 0), data.get('frequency','daily'),
                   alert_id, user_id))
         conn.commit()
 

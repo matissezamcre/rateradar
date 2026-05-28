@@ -360,10 +360,15 @@ def scrape_autoscout24(alert: dict) -> list:
     year_min  = alert.get("year_min", 2010)
     cfg       = _region_cfg(alert)
 
+    zip_code  = alert.get("zip", "").strip()
+    radius_km = alert.get("radius_km", 0)
+    location_params = f"&zip={zip_code}&zipr={radius_km}" if zip_code and radius_km else ""
+
     url = (
         f"https://www.{cfg['domain']}/lst/{brand}/{model}"
         f"?sort=price&desc=0&ustate=N%2CU&size=20&page=1"
         f"&fregfrom={year_min}&kmto={km_max}&priceto={price_max}&cy={cfg['cy']}&atype=C"
+        f"{location_params}"
     )
 
     soup = _get_html(url, AS24_HEADERS)
