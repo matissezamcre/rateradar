@@ -296,6 +296,16 @@ nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 16
           </select>
         </div>
       </div>
+      <div class="frow full">
+        <div><label>Région</label>
+          <select name="region" id="f-region">
+            <option value="France">🇫🇷 France (LBC + AS24 + La Centrale + L'Argus)</option>
+            <option value="Belgique">🇧🇪 Belgique (AutoScout24.be)</option>
+            <option value="Suisse">🇨🇭 Suisse (AutoScout24.ch)</option>
+            <option value="Luxembourg">🇱🇺 Luxembourg (AutoScout24.lu)</option>
+          </select>
+        </div>
+      </div>
       <div class="modal-btns">
         <button type="button" class="mbtn-c" onclick="closeModal()">Annuler</button>
         <button type="submit" class="mbtn-p" id="modal-submit">Créer l'alerte →</button>
@@ -443,6 +453,7 @@ function editAlert(id) {
   document.getElementById('f-km').value = a.km_max || 150000;
   document.getElementById('f-year').value = a.year_min || 2015;
   document.getElementById('f-freq').value = a.frequency || 'daily';
+  document.getElementById('f-region').value = a.region || 'France';
   document.getElementById('overlay').classList.add('open');
 }
 
@@ -480,6 +491,7 @@ document.getElementById('alert-form').addEventListener('submit', async e => {
     km_max: parseInt(document.getElementById('f-km').value),
     year_min: parseInt(document.getElementById('f-year').value),
     frequency: document.getElementById('f-freq').value,
+    region: document.getElementById('f-region').value,
   };
   let r;
   if (editingId) {

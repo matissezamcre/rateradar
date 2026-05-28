@@ -337,6 +337,20 @@ def scrape_leboncoin(alert: dict) -> list:
 
 # ── AutoScout24 (__NEXT_DATA__ JSON) ───────────────────────────────────────────
 
+REGION_CONFIG = {
+    "France":      {"cy": "F",  "domain": "autoscout24.fr",  "lbc": True,  "lacentrale": True, "largus": True},
+    "Belgique":    {"cy": "B",  "domain": "autoscout24.be",  "lbc": False, "lacentrale": False, "largus": False},
+    "Suisse":      {"cy": "CH", "domain": "autoscout24.ch",  "lbc": False, "lacentrale": False, "largus": False},
+    "Luxembourg":  {"cy": "L",  "domain": "autoscout24.lu",  "lbc": False, "lacentrale": False, "largus": False},
+}
+
+def _region_cfg(alert: dict) -> dict:
+    region = alert.get("region", "France")
+    for key in REGION_CONFIG:
+        if key.lower() in region.lower():
+            return REGION_CONFIG[key]
+    return REGION_CONFIG["France"]
+
 def scrape_autoscout24(alert: dict) -> list:
     results = []
     brand     = alert.get("brand", "").lower()
@@ -344,11 +358,12 @@ def scrape_autoscout24(alert: dict) -> list:
     price_max = alert.get("price_max", 50000)
     km_max    = alert.get("km_max", 200000)
     year_min  = alert.get("year_min", 2010)
+    cfg       = _region_cfg(alert)
 
     url = (
-        f"https://www.autoscout24.fr/lst/{brand}/{model}"
+        f"https://www.{cfg['domain']}/lst/{brand}/{model}"
         f"?sort=price&desc=0&ustate=N%2CU&size=20&page=1"
-        f"&fregfrom={year_min}&kmto={km_max}&priceto={price_max}&cy=F&atype=C"
+        f"&fregfrom={year_min}&kmto={km_max}&priceto={price_max}&cy={cfg['cy']}&atype=C"
     )
 
     soup = _get_html(url, AS24_HEADERS)
@@ -408,7 +423,7 @@ def scrape_autoscout24(alert: dict) -> list:
                         image_url = ""
 
                     if not ad_url.startswith("http"):
-                        ad_url = "https://www.autoscout24.fr" + ad_url
+                        ad_url = f"https://www.{cfg['domain']}" + ad_url
                     if price == 0 or price > price_max * 1.1:
                         continue
 
@@ -446,7 +461,7 @@ def scrape_autoscout24(alert: dict) -> list:
                 continue
             href = link["href"]
             if not href.startswith("http"):
-                href = "https://www.autoscout24.fr" + href
+                href = f"https://www.{cfg['domain']}" + href
             # Skip dealer/seller pages
             if "/offres/" not in href and "/annonces/" not in href:
                 continue
@@ -795,8 +810,17 @@ def _is_relevant(v: dict, alert: dict) -> bool:
 # ── Runner ─────────────────────────────────────────────────────────────────────
 
 def run_alert(alert: dict) -> list:
+    cfg = _region_cfg(alert)
+    scrapers = [scrape_autoscout24]
+    if cfg["lbc"]:
+        scrapers.append(scrape_leboncoin)
+    if cfg["lacentrale"]:
+        scrapers.append(scrape_lacentrale)
+    if cfg["largus"]:
+        scrapers.append(scrape_largus)
+
     all_results = []
-    for fn in [scrape_leboncoin, scrape_autoscout24, scrape_lacentrale, scrape_largus]:
+    for fn in scrapers:
         try:
             r = fn(alert)
             print(f"    {fn.__name__}: {len(r)} résultats")
