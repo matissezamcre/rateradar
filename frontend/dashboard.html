@@ -354,33 +354,33 @@ let tutStep = 0;
 const TUT_STEPS = [
   {
     title: "Bienvenue sur RateRadar 🚗",
-    desc: "En 3 minutes, on va vous montrer comment ne plus jamais rater une bonne affaire VO. C'est parti !",
+    desc: "RateRadar est votre assistant automatique pour trouver les meilleures occasions VO. Il surveille LBC, AutoScout24, La Centrale et L'Argus à votre place — 24h/24.",
     target: null,
-    btnText: "Commencer"
+    btnText: "Commencer →"
   },
   {
-    title: "Créez vos alertes",
-    desc: "Définissez vos critères : marque, modèle, budget, kilométrage. RateRadar surveille pour vous.",
+    title: "Étape 1 — Créez votre premier bot",
+    desc: "Cliquez sur « + Nouvelle alerte » et configurez votre bot : marque, modèle, budget max, kilométrage, région. C'est votre robot de veille personnalisé.",
     target: "#new-btn",
     btnText: "Suivant"
   },
   {
-    title: "Lancez un scan",
-    desc: "Scannez instantanément La Centrale, AutoScout24 et LeBonCoin. Les résultats arrivent en 2 minutes.",
-    target: "#run-btn",
+    title: "Étape 2 — Choisissez votre heure",
+    desc: "Chaque bot a une heure de réveil. Choisissez quand il vous contacte — 7h, 8h, 9h... Il tourne automatiquement chaque jour à cette heure.",
+    target: "#new-btn",
     btnText: "Suivant"
   },
   {
-    title: "Analysez les résultats",
-    desc: "Chaque véhicule a un score sur 200. Filtrez par source, prix, kilométrage. Mettez en favori les meilleures annonces.",
+    title: "Étape 3 — Score de pertinence",
+    desc: "Chaque annonce reçoit un score sur 200. Plus c'est élevé, meilleure est l'affaire. Vert = top opportunité, orange = bonne affaire, gris = correct.",
     target: ".toolbar",
     btnText: "Suivant"
   },
   {
-    title: "Recevez vos rapports",
-    desc: "Chaque matin à 8h, un email avec les nouvelles opportunités atterrit dans votre boîte. Vous n'avez plus rien à faire.",
+    title: "Étape 4 — Votre email chaque matin",
+    desc: "À l'heure choisie, vous recevez un email avec les nouvelles annonces du jour : photo, prix, kilométrage, score, et lien direct. Vous n'avez plus rien à faire.",
     target: null,
-    btnText: "C'est parti ! 🚀"
+    btnText: "Lancer mon premier bot 🚀"
   }
 ];
 
@@ -419,8 +419,9 @@ async function init() {
     history.replaceState(null, '', '/dashboard');
   }
 
-  if (!localStorage.getItem('rr_tutorial_done')) {
-    setTimeout(() => startTutorial(), 600);
+  if (new URLSearchParams(location.search).get('welcome') === '1') {
+    history.replaceState(null, '', '/dashboard');
+    setTimeout(() => startTutorial(), 800);
   }
 }
 
@@ -767,16 +768,23 @@ function showTutStep() {
 
 function nextTutStep() {
   tutStep++;
-  if (tutStep >= TUT_STEPS.length) { endTutorial(); return; }
+  if (tutStep >= TUT_STEPS.length) { endTutorial(true); return; }
   const box = document.getElementById('tut-box');
   box.style.transform = '';
   showTutStep();
 }
 
-function endTutorial() {
+function endTutorial(openModal = false) {
   document.getElementById('tut-spotlight').style.display = 'none';
   document.getElementById('tut-box').style.display = 'none';
-  localStorage.setItem('rr_tutorial_done', '1');
+  if (openModal) {
+    setTimeout(() => {
+      document.getElementById('modal-title').textContent = 'Nouvelle alerte';
+      document.getElementById('modal-submit').textContent = 'Créer l\'alerte →';
+      document.getElementById('alert-form').reset();
+      document.getElementById('overlay').classList.add('open');
+    }, 300);
+  }
 }
 
 // ── UTILS ─────────────────────────────────────────────────────────────────────

@@ -294,7 +294,7 @@ async def register(email: str = Form(...), password: str = Form(...), garage_nam
     if get_user_by_email(email):
         return JSONResponse({"error": "Email déjà utilisé"}, status_code=400)
     uid = create_user(email, pwd_ctx.hash(password), garage_name)
-    response = RedirectResponse("/dashboard", status_code=303)
+    response = RedirectResponse("/dashboard?welcome=1", status_code=303)
     response.set_cookie("session", make_token(uid), httponly=True)
     return response
 
