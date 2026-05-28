@@ -6,6 +6,9 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from pathlib import Path
 from typing import Optional
+from zoneinfo import ZoneInfo
+
+TZ_PARIS = ZoneInfo("Europe/Paris")
 
 import jwt
 import stripe
@@ -96,7 +99,7 @@ async def run_hourly_scrape():
     import sys
     sys.path.insert(0, str(BASE_DIR.parent))
 
-    now_hour = datetime.now().hour  # server UTC — Render is UTC
+    now_hour = datetime.now(TZ_PARIS).hour  # heure Paris (UTC+1/+2 selon DST)
 
     alerts = get_all_active_alerts_with_plan()
     to_run = []
@@ -110,7 +113,7 @@ async def run_hourly_scrape():
         elif plan == "agence" and (ah + 12) % 24 == now_hour:
             to_run.append(a)
 
-    print(f"[Scraper] Hour {now_hour}h UTC — {len(to_run)} alerts to run")
+    print(f"[Scraper] Hour {now_hour}h Paris — {len(to_run)} alerts to run")
     new_by_user: dict = {}
 
     for alert in to_run:

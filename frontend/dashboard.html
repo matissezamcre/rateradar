@@ -305,7 +305,7 @@ nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 16
             <option value="Luxembourg">🇱🇺 Luxembourg (AutoScout24.lu)</option>
           </select>
         </div>
-        <div><label>Heure d'alerte</label>
+        <div><label>Heure d'alerte (Paris)</label>
           <select name="alert_hour" id="f-hour">
             <option value="6">6h00</option>
             <option value="7">7h00</option>
@@ -406,6 +406,11 @@ async function init() {
     const btn = document.getElementById('run-btn');
     btn.disabled = true;
     btn.textContent = 'Essai expiré';
+  } else if (me.plan_limits && !me.plan_limits.manual_scan) {
+    const btn = document.getElementById('run-btn');
+    btn.disabled = true;
+    btn.title = 'Scan manuel non disponible en plan Starter';
+    btn.textContent = '⚡ Pro uniquement';
   }
 
   updateBellBadge(me.unread_notifications);
@@ -742,17 +747,12 @@ function showTutStep() {
       spotlight.style.top = (rect.top - pad) + 'px';
       spotlight.style.width = (rect.width + pad*2) + 'px';
       spotlight.style.height = (rect.height + pad*2) + 'px';
-
-      const boxLeft = rect.left + rect.width + 16;
-      const boxTop = rect.top;
-      box.style.left = (boxLeft + 280 > window.innerWidth ? rect.left - 296 : boxLeft) + 'px';
-      box.style.top = Math.min(boxTop, window.innerHeight - 220) + 'px';
     }
-  } else {
-    box.style.left = '50%';
-    box.style.top = '50%';
-    box.style.transform = 'translate(-50%, -50%)';
   }
+  // Box toujours centré — évite les débordements d'écran
+  box.style.left = '50%';
+  box.style.top = '50%';
+  box.style.transform = 'translate(-50%, -50%)';
 
   const dots = TUT_STEPS.map((_, i) => `<div class="tut-dot ${i === tutStep ? 'active' : ''}"></div>`).join('');
   box.innerHTML = `
