@@ -91,17 +91,29 @@ def get_user_plan(user: dict) -> str:
     return "expired"
 
 
-async def run_daily_scrape(plans=None):
+async def run_hourly_scrape():
     from scripts.scraper import run_alert
     import sys
     sys.path.insert(0, str(BASE_DIR.parent))
 
+    now_hour = datetime.now().hour  # server UTC — Render is UTC
+
     alerts = get_all_active_alerts_with_plan()
-    if plans is not None:
-        alerts = [a for a in alerts if _alert_plan(a) in plans]
-    print(f"[Scraper] Running {len(alerts)} alerts (slot={plans or 'all'})...")
-    new_by_user = {}
-    for alert in alerts:
+    to_run = []
+    for a in alerts:
+        plan = _alert_plan(a)
+        if plan == "expired":
+            continue
+        ah = int(a.get("alert_hour") or 8)
+        if ah == now_hour:
+            to_run.append(a)
+        elif plan == "agence" and (ah + 12) % 24 == now_hour:
+            to_run.append(a)
+
+    print(f"[Scraper] Hour {now_hour}h UTC — {len(to_run)} alerts to run")
+    new_by_user: dict = {}
+
+    for alert in to_run:
         try:
             vehicles = run_alert(alert)
             new = 0
@@ -111,13 +123,13 @@ async def run_daily_scrape(plans=None):
                     uid = v['user_id']
                     new_by_user[uid] = new_by_user.get(uid, 0) + 1
             update_alert_last_scan(alert['id'])
-            print(f"  Alert {alert['id'][:8]}: {new} new vehicles")
+            print(f"  Alert {alert['id'][:8]}: {new} new")
         except Exception as e:
-            print(f"  Error alert {alert['id'][:8]}: {e}")
+            print(f"  Error {alert['id'][:8]}: {e}")
 
     for uid, count in new_by_user.items():
         try:
-            create_notification(uid, f"🚗 {count} nouveau(x) véhicule(s) trouvé(s) aujourd'hui")
+            create_notification(uid, f"🚗 {count} nouveau(x) véhicule(s) trouvé(s) ce matin")
         except Exception:
             pass
 
@@ -138,18 +150,85 @@ def send_digest_email(to_email: str, garage_name: str, vehicles: list):
     if not gmail_user or not gmail_pass:
         return
 
-    lines = [f"Bonjour {garage_name or ''},\n",
-             f"RateRadar a trouvé {len(vehicles)} opportunité(s) pour vous aujourd'hui :\n"]
-    for v in vehicles[:10]:
-        lines.append(f"• {v['title']} — {v['price']:,}€ — {v['km']:,} km — {v['location']}")
-        lines.append(f"  → {v['url']}\n")
-    lines.append(f"\nBonne chasse !\nL'équipe RateRadar\n{APP_URL}")
+    def score_color(s):
+        if s >= 140: return "#22c55e"
+        if s >= 110: return "#f59e0b"
+        return "#64748b"
 
-    msg = MIMEMultipart()
-    msg["From"] = f"RateRadar <{gmail_user}>"
+    def score_label(s):
+        if s >= 140: return "Top affaire"
+        if s >= 110: return "Bonne affaire"
+        return "Correct"
+
+    cards = ""
+    for v in vehicles[:12]:
+        img_block = ""
+        if v.get("image_url"):
+            img_block = f'<img src="{v["image_url"]}" width="130" height="90" style="display:block;object-fit:cover;width:130px;height:90px;" alt="">'
+        else:
+            img_block = '<div style="width:130px;height:90px;background:#0f172a;display:flex;align-items:center;justify-content:center"><span style="font-size:28px">🚗</span></div>'
+
+        sc = v.get("score", 100)
+        km_fmt = f"{v.get('km', 0):,}".replace(",", " ")
+        price_fmt = f"{v.get('price', 0):,}".replace(",", " ")
+        loc = v.get("location") or ""
+        year = v.get("year") or ""
+        meta = " · ".join(filter(None, [f"{km_fmt} km", str(year) if year else "", loc]))
+        source_badge = {"autoscout24": "AS24", "leboncoin": "LBC", "lacentrale": "LC", "largus": "Argus"}.get(v.get("source",""), v.get("source",""))
+
+        cards += f"""
+<div style="background:#1e293b;border-radius:12px;margin-bottom:14px;border:1px solid #334155;overflow:hidden">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+    <td width="130" valign="top" style="background:#0f172a">{img_block}</td>
+    <td style="padding:12px 14px;vertical-align:top">
+      <p style="margin:0 0 2px;font-size:12px;font-weight:700;color:#e2e8f0;line-height:1.3">{v.get("title","")[:50]}</p>
+      <p style="margin:0 0 8px;font-size:20px;font-weight:800;color:#3b82f6;letter-spacing:-0.5px">{price_fmt} €</p>
+      <p style="margin:0 0 8px;font-size:11px;color:#64748b">{meta}</p>
+      <span style="background:#0f172a;color:#94a3b8;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;letter-spacing:.05em">{source_badge}</span>
+    </td>
+    <td width="90" style="padding:12px;vertical-align:top;text-align:center">
+      <div style="background:{score_color(sc)};color:#fff;font-size:9px;font-weight:800;padding:4px 8px;border-radius:20px;margin-bottom:6px;white-space:nowrap">{score_label(sc)}</div>
+      <div style="font-size:18px;font-weight:800;color:#fff;margin-bottom:10px">{sc}</div>
+      <a href="{v.get('url','')}" style="display:block;background:#3b82f6;color:#fff;font-size:11px;font-weight:700;padding:7px 10px;border-radius:8px;text-decoration:none;text-align:center">Voir →</a>
+    </td>
+  </tr></table>
+</div>"""
+
+    n = len(vehicles)
+    name = garage_name or "là"
+    html_body = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Inter',Arial,sans-serif">
+<div style="max-width:600px;margin:0 auto;padding:24px 16px">
+
+  <div style="text-align:center;padding:28px 0 20px">
+    <span style="font-size:26px;font-weight:800;color:#fff;letter-spacing:-1px">Rate<span style="color:#3b82f6">Radar</span></span>
+    <p style="margin:6px 0 0;font-size:12px;color:#475569;letter-spacing:.05em;text-transform:uppercase">Votre veille automatique VO</p>
+  </div>
+
+  <div style="background:#1e293b;border:1px solid #334155;border-radius:14px;padding:20px 22px;margin-bottom:24px">
+    <p style="margin:0 0 4px;font-size:15px;font-weight:700;color:#e2e8f0">Bonjour {name} 👋</p>
+    <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.6">Votre bot a trouvé <strong style="color:#3b82f6">{n} nouvelle{"s" if n>1 else ""} annonce{"s" if n>1 else ""}</strong> correspondant à vos alertes. Voici les meilleures opportunités du moment :</p>
+  </div>
+
+  {cards}
+
+  <div style="text-align:center;margin-top:28px;margin-bottom:8px">
+    <a href="{APP_URL}/dashboard" style="display:inline-block;background:#3b82f6;color:#fff;font-size:13px;font-weight:700;padding:12px 28px;border-radius:10px;text-decoration:none">Voir toutes les annonces →</a>
+  </div>
+
+  <div style="border-top:1px solid #1e293b;margin-top:28px;padding-top:16px;text-align:center">
+    <p style="margin:0;font-size:11px;color:#334155">RateRadar · <a href="{APP_URL}/dashboard" style="color:#475569">Dashboard</a> · <a href="{APP_URL}/profile" style="color:#475569">Gérer mes alertes</a></p>
+  </div>
+
+</div>
+</body></html>"""
+
+    msg = MIMEMultipart("alternative")
+    msg["From"] = f"RateRadar 🚗 <{gmail_user}>"
     msg["To"] = to_email
-    msg["Subject"] = f"🚗 {len(vehicles)} opportunité(s) trouvée(s) aujourd'hui — RateRadar"
-    msg.attach(MIMEText("\n".join(lines), "plain", "utf-8"))
+    msg["Subject"] = f"🚗 {n} nouvelle{'s' if n>1 else ''} annonce{'s' if n>1 else ''} trouvée{'s' if n>1 else ''} — RateRadar"
+    msg.attach(MIMEText(html_body, "html", "utf-8"))
 
     with smtplib.SMTP("smtp.gmail.com", 587, timeout=15) as smtp:
         smtp.ehlo()
@@ -161,10 +240,7 @@ def send_digest_email(to_email: str, garage_name: str, vehicles: list):
 @asynccontextmanager
 async def lifespan(app):
     init_db()
-    scheduler.add_job(run_daily_scrape, 'cron', hour=8,  minute=0, id='scan_8h',  args=[None])
-    scheduler.add_job(run_daily_scrape, 'cron', hour=14, minute=0, id='scan_14h', args=[["trial", "pro", "agence"]])
-    scheduler.add_job(run_daily_scrape, 'cron', hour=18, minute=0, id='scan_18h', args=[["trial", "agence"]])
-    scheduler.add_job(run_daily_scrape, 'cron', hour=22, minute=0, id='scan_22h', args=[["agence"]])
+    scheduler.add_job(run_hourly_scrape, 'cron', minute=0, id='scan_hourly')
     scheduler.start()
     yield
     scheduler.shutdown()
@@ -341,6 +417,7 @@ class AlertCreate(BaseModel):
     region: str = "France"
     zip: str = ""
     radius_km: int = 0
+    alert_hour: int = 8
     frequency: str = "daily"
 
 @app.get("/alerts")
@@ -362,6 +439,9 @@ def alert_create(req: AlertCreate, user: dict = Depends(require_user)):
     max_alerts = limits.get("max_alerts")
     if max_alerts is not None and count_user_alerts(user["id"]) >= max_alerts:
         raise HTTPException(status_code=402, detail=f"alert_limit:{max_alerts}")
+    # Starter plan locked to 8h
+    if plan in ("starter", "expired") and req.alert_hour != 8:
+        req = req.copy(update={"alert_hour": 8})
     aid = create_alert(user["id"], req.dict())
     return {"id": aid}
 

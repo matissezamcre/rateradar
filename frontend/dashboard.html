@@ -296,13 +296,26 @@ nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 16
           </select>
         </div>
       </div>
-      <div class="frow full">
+      <div class="frow">
         <div><label>Région</label>
           <select name="region" id="f-region">
             <option value="France">🇫🇷 France (LBC + AS24 + La Centrale + L'Argus)</option>
             <option value="Belgique">🇧🇪 Belgique (AutoScout24.be)</option>
             <option value="Suisse">🇨🇭 Suisse (AutoScout24.ch)</option>
             <option value="Luxembourg">🇱🇺 Luxembourg (AutoScout24.lu)</option>
+          </select>
+        </div>
+        <div><label>Heure d'alerte</label>
+          <select name="alert_hour" id="f-hour">
+            <option value="6">6h00</option>
+            <option value="7">7h00</option>
+            <option value="8" selected>8h00</option>
+            <option value="9">9h00</option>
+            <option value="10">10h00</option>
+            <option value="12">12h00</option>
+            <option value="14">14h00</option>
+            <option value="17">17h00</option>
+            <option value="19">19h00</option>
           </select>
         </div>
       </div>
@@ -435,7 +448,7 @@ function renderSidebar() {
         <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.name || [a.brand,a.model].filter(Boolean).join(' ') || 'Alerte'}</span>
         <span class="alert-count">${a.vehicle_count||0}</span>
       </div>
-      <div class="alert-meta">${[a.brand,a.model].filter(Boolean).join(' ')} · max ${(a.price_max||0).toLocaleString('fr')}€<br>${lastScan}</div>
+      <div class="alert-meta">${[a.brand,a.model].filter(Boolean).join(' ')} · max ${(a.price_max||0).toLocaleString('fr')}€<br><span style="color:#3b82f6">🤖 Bot · ${a.alert_hour||8}h00 chaque jour</span> · ${lastScan}</div>
       <div class="alert-actions">
         <button class="a-btn" onclick="event.stopPropagation();editAlert('${a.id}')"">Éditer</button>
         <button class="a-btn" onclick="event.stopPropagation();toggleAlert('${a.id}',${a.active})">${a.active?'Pause':'Activer'}</button>
@@ -469,6 +482,7 @@ function editAlert(id) {
   document.getElementById('f-region').value = a.region || 'France';
   document.getElementById('f-zip').value = a.zip || '';
   document.getElementById('f-radius').value = a.radius_km || 0;
+  document.getElementById('f-hour').value = a.alert_hour || 8;
   document.getElementById('overlay').classList.add('open');
 }
 
@@ -509,6 +523,7 @@ document.getElementById('alert-form').addEventListener('submit', async e => {
     region: document.getElementById('f-region').value,
     zip: document.getElementById('f-zip').value,
     radius_km: parseInt(document.getElementById('f-radius').value) || 0,
+    alert_hour: parseInt(document.getElementById('f-hour').value) || 8,
   };
   let r;
   if (editingId) {
