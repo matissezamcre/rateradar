@@ -407,18 +407,18 @@ def get_all_users_admin() -> list:
         with conn.cursor() as cur:
             cur.execute("""
                 SELECT u.id, u.email, u.garage_name, u.subscription_status, u.plan,
-                       u.created_at, u.total_conversations,
+                       u.created_at,
                        json_agg(
                            json_build_object(
-                               'id', a.id, 'name', a.name, 'brand', a.brand,
+                               'id', a.id, 'brand', a.brand,
                                'model', a.model, 'price_max', a.price_max,
                                'region', a.region, 'alert_hour', a.alert_hour,
                                'active', a.active
-                           ) ORDER BY a.created_at DESC
+                           )
                        ) FILTER (WHERE a.id IS NOT NULL) as alerts
                 FROM users u
                 LEFT JOIN alerts a ON a.user_id = u.id
-                GROUP BY u.id
+                GROUP BY u.id, u.email, u.garage_name, u.subscription_status, u.plan, u.created_at
                 ORDER BY u.created_at DESC
             """)
             return _rows(cur)
