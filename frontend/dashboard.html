@@ -201,6 +201,7 @@ nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 16
   <span class="nav-garage" id="nav-garage"></span>
   <div class="nav-links">
     <a href="/profile" class="nav-link">Mon profil</a>
+    <a href="/admin" class="nav-link" id="admin-link" style="display:none">Admin</a>
     <a href="/logout" class="nav-link">Déco</a>
   </div>
 </nav>
@@ -390,6 +391,8 @@ async function init() {
   me = await r.json();
 
   document.getElementById('nav-garage').textContent = me.garage_name || me.email;
+  if (['matisse.zamcre@gmail.com','matissezamcre@gmail.com'].includes(me.email))
+    document.getElementById('admin-link').style.display = '';
 
   if (me.subscription_status === 'active') {
     document.getElementById('pro-badge').style.display = '';
