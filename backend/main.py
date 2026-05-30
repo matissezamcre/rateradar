@@ -356,19 +356,22 @@ def dashboard(request: Request):
         return RedirectResponse("/login")
     return html("dashboard.html")
 
-ADMIN_EMAIL = "matissezamcre@gmail.com"
+ADMIN_EMAILS = {"matissezamcre@gmail.com", "matisse.zamcre@gmail.com"}
+
+def is_admin(user):
+    return user and user.get("email") in ADMIN_EMAILS
 
 @app.get("/admin")
 def admin_page(request: Request):
     user = get_current_user(request)
-    if not user or user.get("email") != ADMIN_EMAIL:
+    if not is_admin(user):
         return RedirectResponse("/login")
     return html("admin.html")
 
 @app.get("/api/admin/users")
 def admin_users(request: Request):
     user = get_current_user(request)
-    if not user or user.get("email") != ADMIN_EMAIL:
+    if not is_admin(user):
         raise HTTPException(status_code=403)
     return JSONResponse(get_all_users_admin())
 
@@ -385,10 +388,16 @@ def me(request: Request):
     if not user:
         return JSONResponse({"error": "unauthenticated"}, status_code=401)
     try:
-        created = datetime.fromisoformat((user["created_at"] or "").replace("Z", "+00:00"))
+        raw = user.get("created_at")
+        if raw:
+            created = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+            if created.tzinfo is None:
+                created = created.replace(tzinfo=timezone.utc)
+        else:
+            created = datetime.now(timezone.utc)
         days_left = max(0, 14 - (datetime.now(timezone.utc) - created).days)
     except Exception:
-        days_left = 14
+        days_left = 0
     unread = get_unread_count(user["id"])
     plan = get_user_plan(user)
     return {
