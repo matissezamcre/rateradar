@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RateRadar — Admin</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0f1e; color: #e2e8f0; min-height: 100vh; }
+header { background: #0f172a; border-bottom: 1px solid #1e293b; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; }
+.logo { font-size: 18px; font-weight: 700; color: #f97316; }
+.logo span { color: #e2e8f0; font-size: 13px; font-weight: 400; margin-left: 12px; color: #64748b; }
+a.btn-back { font-size: 13px; color: #64748b; text-decoration: none; }
+a.btn-back:hover { color: #e2e8f0; }
+main { padding: 32px; max-width: 1400px; margin: 0 auto; }
+h1 { font-size: 22px; font-weight: 700; margin-bottom: 24px; }
+
+.stats-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 32px; }
+.stat { background: #0f172a; border: 1px solid #1e293b; border-radius: 10px; padding: 16px 20px; }
+.stat-label { font-size: 11px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+.stat-value { font-size: 26px; font-weight: 700; }
+.stat.trial .stat-value { color: #f59e0b; }
+.stat.active .stat-value { color: #10b981; }
+.stat.expired .stat-value { color: #ef4444; }
+.stat.total .stat-value { color: #e2e8f0; }
+.stat.alerts .stat-value { color: #3b82f6; }
+
+table { width: 100%; border-collapse: collapse; background: #0f172a; border: 1px solid #1e293b; border-radius: 10px; overflow: hidden; }
+th { background: #070d1a; padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; }
+td { padding: 13px 16px; font-size: 13px; border-top: 1px solid #1e293b; vertical-align: top; }
+tr:hover td { background: #111827; }
+
+.badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+.badge.active { background: #052e16; color: #34d399; }
+.badge.trial { background: #3f2a00; color: #fbbf24; }
+.badge.expired { background: #1c1017; color: #f87171; }
+.badge.starter { background: #1e293b; color: #94a3b8; }
+.badge.pro { background: #1e3a5f; color: #60a5fa; }
+.badge.agence { background: #2d1b69; color: #a78bfa; }
+
+.alerts-list { display: flex; flex-direction: column; gap: 4px; }
+.alert-tag { background: #1e293b; border-radius: 5px; padding: 3px 8px; font-size: 11px; color: #94a3b8; display: inline-block; }
+.alert-tag.inactive { opacity: 0.4; }
+
+.email-link { color: #60a5fa; text-decoration: none; font-size: 13px; }
+.email-link:hover { text-decoration: underline; }
+.garage { font-weight: 600; font-size: 13px; }
+.since { color: #475569; font-size: 11px; }
+
+input[type=search] { background: #0f172a; border: 1px solid #1e293b; border-radius: 6px; padding: 9px 14px; color: #e2e8f0; font-size: 13px; outline: none; width: 300px; margin-bottom: 16px; }
+input[type=search]:focus { border-color: #3b82f6; }
+input[type=search]::placeholder { color: #334155; }
+
+#loading { text-align: center; padding: 60px; color: #475569; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">RateRadar <span>— Panneau Admin</span></div>
+  <a class="btn-back" href="/dashboard">← Dashboard</a>
+</header>
+
+<main>
+  <h1>Clients</h1>
+
+  <div class="stats-row">
+    <div class="stat total"><div class="stat-label">Total</div><div class="stat-value" id="s-total">—</div></div>
+    <div class="stat trial"><div class="stat-label">Essai</div><div class="stat-value" id="s-trial">—</div></div>
+    <div class="stat active"><div class="stat-label">Actifs (payants)</div><div class="stat-value" id="s-active">—</div></div>
+    <div class="stat expired"><div class="stat-label">Expirés</div><div class="stat-value" id="s-expired">—</div></div>
+    <div class="stat alerts"><div class="stat-label">Alertes totales</div><div class="stat-value" id="s-alerts">—</div></div>
+  </div>
+
+  <input type="search" id="search" placeholder="Rechercher email, garage..." oninput="render()">
+
+  <div id="loading">Chargement...</div>
+  <table id="table" style="display:none">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Garage / Email</th>
+        <th>Plan</th>
+        <th>Inscrit le</th>
+        <th>Alertes</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+</main>
+
+<script>
+let allUsers = [];
+
+const PLAN_ORDER = { active: 0, trial: 1, expired: 2 };
+
+function planLabel(u) {
+  if (u.subscription_status === 'active') return u.plan || 'starter';
+  const days = (Date.now() - new Date(u.created_at)) / 86400000;
+  return days < 14 ? 'trial' : 'expired';
+}
+
+function planBadge(u) {
+  const p = planLabel(u);
+  const status = u.subscription_status === 'active' ? 'active' : (p === 'trial' ? 'trial' : 'expired');
+  const planName = u.subscription_status === 'active' ? (u.plan || 'starter') : p;
+  return `<span class="badge ${status}">${status === 'active' ? '●' : status === 'trial' ? '⏳' : '✕'}</span>
+          <span class="badge ${planName}" style="margin-left:4px">${planName}</span>`;
+}
+
+function formatDate(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('fr', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function render() {
+  const q = document.getElementById('search').value.toLowerCase();
+  const users = q
+    ? allUsers.filter(u => (u.email||'').includes(q) || (u.garage_name||'').toLowerCase().includes(q))
+    : allUsers;
+
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = users.map((u, i) => {
+    const alerts = (u.alerts || []);
+    const activeAlerts = alerts.filter(a => a.active);
+    const alertsHtml = alerts.length
+      ? `<div class="alerts-list">${alerts.map(a =>
+          `<span class="alert-tag ${a.active ? '' : 'inactive'}">
+            ${a.brand} ${a.model}${a.price_max ? ` · max ${(a.price_max/1000).toFixed(0)}k€` : ''}${a.region ? ` · ${a.region}` : ''}
+          </span>`
+        ).join('')}</div>`
+      : '<span style="color:#334155;font-size:11px">Aucune alerte</span>';
+
+    return `<tr>
+      <td style="color:#334155;font-size:11px">${i + 1}</td>
+      <td>
+        <div class="garage">${u.garage_name || '—'}</div>
+        <a class="email-link" href="mailto:${u.email}">${u.email}</a>
+      </td>
+      <td>${planBadge(u)}</td>
+      <td><span class="since">${formatDate(u.created_at)}</span></td>
+      <td>${alertsHtml}</td>
+    </tr>`;
+  }).join('');
+}
+
+fetch('/api/admin/users')
+  .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+  .then(users => {
+    allUsers = users.sort((a, b) => {
+      const pa = planLabel(a), pb = planLabel(b);
+      const oa = a.subscription_status === 'active' ? 0 : pa === 'trial' ? 1 : 2;
+      const ob = b.subscription_status === 'active' ? 0 : pb === 'trial' ? 1 : 2;
+      return oa - ob || new Date(b.created_at) - new Date(a.created_at);
+    });
+
+    const total = users.length;
+    const active = users.filter(u => u.subscription_status === 'active').length;
+    const trial = users.filter(u => u.subscription_status !== 'active' && (Date.now() - new Date(u.created_at)) / 86400000 < 14).length;
+    const expired = total - active - trial;
+    const totalAlerts = users.reduce((s, u) => s + (u.alerts || []).length, 0);
+
+    document.getElementById('s-total').textContent = total;
+    document.getElementById('s-active').textContent = active;
+    document.getElementById('s-trial').textContent = trial;
+    document.getElementById('s-expired').textContent = expired;
+    document.getElementById('s-alerts').textContent = totalAlerts;
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('table').style.display = 'table';
+    render();
+  })
+  .catch(e => {
+    document.getElementById('loading').textContent = `Erreur: ${e.message}`;
+  });
+</script>
+</body>
+</html>

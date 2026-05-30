@@ -402,6 +402,28 @@ def get_best_vehicle_today(user_id: str):
             return _row(cur)
 
 
+def get_all_users_admin() -> list:
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT u.id, u.email, u.garage_name, u.subscription_status, u.plan,
+                       u.created_at, u.total_conversations,
+                       json_agg(
+                           json_build_object(
+                               'id', a.id, 'name', a.name, 'brand', a.brand,
+                               'model', a.model, 'price_max', a.price_max,
+                               'region', a.region, 'alert_hour', a.alert_hour,
+                               'active', a.active
+                           ) ORDER BY a.created_at DESC
+                       ) FILTER (WHERE a.id IS NOT NULL) as alerts
+                FROM users u
+                LEFT JOIN alerts a ON a.user_id = u.id
+                GROUP BY u.id
+                ORDER BY u.created_at DESC
+            """)
+            return _rows(cur)
+
+
 def get_all_users_with_alerts() -> list:
     with get_conn() as conn:
         with conn.cursor() as cur:

@@ -27,7 +27,7 @@ try:
         set_reset_token, get_user_by_reset_token, update_password,
         create_alert, get_alerts, delete_alert, toggle_alert, update_alert, update_alert_last_scan,
         get_all_active_alerts, get_all_active_alerts_with_plan, save_vehicle, get_vehicles,
-        get_unsent_vehicles, mark_vehicles_sent, get_all_users_with_alerts,
+        get_unsent_vehicles, mark_vehicles_sent, get_all_users_with_alerts, get_all_users_admin,
         toggle_vehicle_favorite, hide_vehicle,
         get_vehicle_stats_daily, get_best_vehicle_today,
         create_notification, get_notifications, mark_notifications_read, get_unread_count,
@@ -40,7 +40,7 @@ except ModuleNotFoundError:
         set_reset_token, get_user_by_reset_token, update_password,
         create_alert, get_alerts, delete_alert, toggle_alert, update_alert, update_alert_last_scan,
         get_all_active_alerts, get_all_active_alerts_with_plan, save_vehicle, get_vehicles,
-        get_unsent_vehicles, mark_vehicles_sent, get_all_users_with_alerts,
+        get_unsent_vehicles, mark_vehicles_sent, get_all_users_with_alerts, get_all_users_admin,
         toggle_vehicle_favorite, hide_vehicle,
         get_vehicle_stats_daily, get_best_vehicle_today,
         create_notification, get_notifications, mark_notifications_read, get_unread_count,
@@ -355,6 +355,22 @@ def dashboard(request: Request):
     if not user:
         return RedirectResponse("/login")
     return html("dashboard.html")
+
+ADMIN_EMAIL = "matissezamcre@gmail.com"
+
+@app.get("/admin")
+def admin_page(request: Request):
+    user = get_current_user(request)
+    if not user or user.get("email") != ADMIN_EMAIL:
+        return RedirectResponse("/login")
+    return html("admin.html")
+
+@app.get("/api/admin/users")
+def admin_users(request: Request):
+    user = get_current_user(request)
+    if not user or user.get("email") != ADMIN_EMAIL:
+        raise HTTPException(status_code=403)
+    return JSONResponse(get_all_users_admin())
 
 @app.get("/profile")
 def profile_page(request: Request):
